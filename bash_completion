@@ -23,9 +23,7 @@ __nvm_commands() {
   COMMANDS='
     help install uninstall use
     current list ls list-remote ls-remote
-    install-latest-npm
-    cache deactivate unload
-    version version-remote which'
+    deactivate version remote which'
 
   if [ ${#COMP_WORDS[@]} == 4 ]; then
 
@@ -51,15 +49,6 @@ __nvm_options() {
 
 __nvm_installed_nodes() {
   __nvm_generate_completion "$(nvm_ls) $(__nvm_aliases)"
-}
-
-__nvm_aliases() {
-  declare aliases
-  aliases=""
-  if [ -d "${NVM_DIR}/alias" ]; then
-    aliases="$(cd "${NVM_DIR}/alias" && command find "${PWD}" -type f | command sed "s:${PWD}/::")"
-  fi
-  echo "${aliases} node stable unstable iojs"
 }
 
 __nvm_alias() {
