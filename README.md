@@ -1,2 +1,13 @@
-# symenv
-symenv SDK version manager
+Installation process:
+
+Locally: 
+```shell
+sh install.sh
+```
+
+Remotely
+
+```shell
+curl https://<host>/<path>/install.sh | sh
+```
+
