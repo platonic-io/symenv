@@ -285,7 +285,7 @@
       return 0
     fi
     if [[ -e ${TARGET_PATH} ]]; then
-      rm -r ${TARGET_PATH}
+      rm -rf ${TARGET_PATH}
     fi
     mkdir -p ${TARGET_PATH}
 
@@ -294,20 +294,24 @@
     SIGNED_DOWNLOAD_URL=`echo ${SIGNED_URL_RESPONSE} | jq .signedUrl | tr -d \"`
 
     TARGET_FILE="${TARGET_PATH}/download.tbz2"
-    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o ${TARGET_FILE}
-    tar -xzf ${TARGET_FILE} --directory ${TARGET_PATH}
+    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
+    tar xf "${TARGET_FILE}" --directory "${TARGET_PATH}"
     rm ${TARGET_FILE}
 
     if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
       # Linux
-      echo "Not yet implemented"
+      CONTAINING_FOLDER=`find ${TARGET_PATH} -mindepth 2 -maxdepth 2 -type d`
+      mv "${CONTAINING_FOLDER}"/* ${TARGET_PATH}
     elif [[ "${OSTYPE}" == "darwin"* ]]; then
       # Mac OSX
       INSTALLER_NAME=`ls ${TARGET_PATH} | grep .pkg`
       sudo installer -pkg ${TARGET_PATH}/${INSTALLER_NAME} -target ${TARGET_PATH}
     fi
 
-
+    if [[ -e "${SYMENV_DIR}/versions/current" ]]; then
+      rm "${SYMENV_DIR}/versions/current"
+    fi
+    ln -s "${TARGET_PATH}" "${SYMENV_DIR}/versions/current"
   }
 
   symenv_config_set() {

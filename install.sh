@@ -303,7 +303,7 @@ symenv_do_install() {
   PROFILE_INSTALL_DIR="$(symenv_install_dir | command sed "s:^$HOME:\$HOME:")"
 
   SOURCE_STR="\\nexport SYMENV_DIR=\"${PROFILE_INSTALL_DIR}\"\\n[ -s \"\$SYMENV_DIR/symenv.sh\" ] && \\. \"\$SYMENV_DIR/symenv.sh\"  # This loads symenv\\n"
-
+  SDK_STR='[ -s "$SYMENV_DIR/versions/current" ] && export PATH=$PATH:"$SYMENV_DIR/versions/current/bin"  # This loads symenv managed SDK\n'
   # shellcheck disable=SC2016
   COMPLETION_STR='[ -s "$SYMENV_DIR/bash_completion" ] && \. "$SYMENV_DIR/bash_completion"  # This loads symenv bash_completion\n'
   BASH_OR_ZSH=false
@@ -318,6 +318,7 @@ symenv_do_install() {
     symenv_echo "   OR"
     symenv_echo "=> Append the following lines to the correct file yourself:"
     command printf "${SOURCE_STR}"
+    command printf "${SDK_STR}"
     symenv_echo
   else
     if symenv_profile_is_bash_or_zsh "${SYMENV_PROFILE-}"; then
@@ -326,6 +327,7 @@ symenv_do_install() {
     if ! command grep -qc '/symenv.sh' "$SYMENV_PROFILE"; then
       symenv_echo "=> Appending symenv source string to $SYMENV_PROFILE"
       command printf "${SOURCE_STR}" >> "$SYMENV_PROFILE"
+      command printf "${SDK_STR}" >> "$SYMENV_PROFILE"
     else
       symenv_echo "=> symenv source string already in ${SYMENV_PROFILE}"
     fi
