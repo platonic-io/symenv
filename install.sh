@@ -27,7 +27,7 @@ symenv_install_dir() {
 }
 
 symenv_latest_version() {
-  sy_echo "main"
+  sym_echo "main"
 }
 
 symenv_profile_is_bash_or_zsh() {
