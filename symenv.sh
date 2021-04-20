@@ -231,7 +231,9 @@
 
     if symenv_has open
     then
-        open ${VERIFICATION_URL}
+      open ${VERIFICATION_URL}
+    elif symenv_has xdg-open
+      xdg-open ${VERIFICATION_URL}
     else
       echo "Please authenticate using the following URL: ${VERIFICATION_URL}"
     fi

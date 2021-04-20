@@ -334,14 +334,14 @@ symenv_do_install() {
     # shellcheck disable=SC2016
     if ${BASH_OR_ZSH} && ! command grep -qc '$SYMENV_DIR/bash_completion' "$SYMENV_PROFILE"; then
       symenv_echo "=> Appending bash_completion source string to $SYMENV_PROFILE"
-#      command printf "$COMPLETION_STR" >> "$SYMENV_PROFILE"
+      command printf "$COMPLETION_STR" >> "$SYMENV_PROFILE"
     else
       symenv_echo "=> bash_completion source string already in ${SYMENV_PROFILE}"
     fi
   fi
   if ${BASH_OR_ZSH} && [ -z "${SYMENV_PROFILE-}" ] ; then
     symenv_echo "=> Please also append the following lines to the if you are using bash/zsh shell:"
-#    command printf "${COMPLETION_STR}"
+    command printf "${COMPLETION_STR}"
   fi
 
   # shellcheck source=/dev/null

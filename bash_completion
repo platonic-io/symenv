@@ -2,11 +2,11 @@
 
 # bash completion for Symbiont SDK Version Manager (symenv)
 
-if ! command -v nvm &> /dev/null; then
+if ! command -v symenv &> /dev/null; then
   return
 fi
 
-__nvm_generate_completion() {
+__symenv_generate_completion() {
   declare current_word
   current_word="${COMP_WORDS[COMP_CWORD]}"
   # shellcheck disable=SC2207
@@ -14,7 +14,7 @@ __nvm_generate_completion() {
   return 0
 }
 
-__nvm_commands() {
+__symenv_commands() {
   declare current_word
   declare command
 
@@ -24,45 +24,33 @@ __nvm_commands() {
     help install uninstall use
     current list ls list-remote ls-remote
     deactivate version remote which'
-
-  if [ ${#COMP_WORDS[@]} == 4 ]; then
-
-    command="${COMP_WORDS[COMP_CWORD - 2]}"
-    case "${command}" in
-      alias) __nvm_installed_nodes ;;
-    esac
-
-  else
-
     case "${current_word}" in
-      -*) __nvm_options ;;
-      *) __nvm_generate_completion "${COMMANDS}" ;;
+      -*) __symenv_options ;;
+      *) __symenv_generate_completion "${COMMANDS}" ;;
     esac
-
-  fi
 }
 
-__nvm_options() {
+__symenv_options() {
   OPTIONS=''
-  __nvm_generate_completion "${OPTIONS}"
+  __symenv_generate_completion "${OPTIONS}"
 }
 
-__nvm_installed_nodes() {
-  __nvm_generate_completion "$(nvm_ls) $(__nvm_aliases)"
+__symenv_installed_sdks() {
+  __symenv_generate_completion "$(symenv_list_local_versions)"
 }
 
-__nvm_alias() {
-  __nvm_generate_completion "$(__nvm_aliases)"
+__symenv_remote_sdks() {
+  __symenv_generate_completion "$(symenv_list_remote_versions)"
 }
 
-__nvm() {
+__symenv() {
   declare previous_word
   previous_word="${COMP_WORDS[COMP_CWORD - 1]}"
 
   case "${previous_word}" in
-    use | run | exec | ls | list | uninstall) __nvm_installed_nodes ;;
-    alias | unalias) __nvm_alias ;;
-    *) __nvm_commands ;;
+    use | remote | ls | list | uninstall) __symenv_installed_sdks ;;
+    install) __symenv_remote_sdks ;;
+    *) __symenv_commands ;;
   esac
 
   return 0
@@ -84,4 +72,4 @@ if [[ -n ${ZSH_VERSION-} ]]; then
   autoload -U +X bashcompinit && bashcompinit
 fi
 
-complete -o default -F __nvm nvm
+complete -o default -F __symenv symenv
