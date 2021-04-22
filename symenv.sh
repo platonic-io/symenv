@@ -394,10 +394,6 @@
     fi
   }
 
-  symenv_config() {
-    # TODO
-  }
-
   symenv() {
     if [ $# -lt 1 ]; then
       symenv --help
@@ -496,9 +492,6 @@
       ;;
       "deactivate")
         symenv_deactivate
-      ;;
-      "config")
-        symenv_config
       ;;
       "current")
         if symenv_has_managed_sdk; then
