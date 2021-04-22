@@ -7,10 +7,7 @@
     return 101
   fi
 
-  # export SYMENV_CLIENT_ID=KHKUQ2CpJQ0YjUyvtoIweUZMBRldAyqx
-  export SYMENV_CLIENT_ID=v6VhzaOcbtcJovxph1qqQiqafLfoRrvT
-  # export SYMENV_TENANT=sym-dev.eu.auth0.com
-  export SYMENV_TENANT=internal-portal.us.auth0.com
+  export SYMENV_REGISTRY=portal-staging.waf-symbiont.io
 
   symenv_is_zsh() {
     [ -n "${ZSH_VERSION-}" ]
@@ -113,18 +110,24 @@
     DATA=${1}
 
     META_FILE="${SYMENV_DIR}/versions/versions.meta"
+    if [ ! -e "${SYMENV_DIR}/versions" ]; then
+      mkdir -p "${SYMENV_DIR}/versions"
+    fi
     echo "" > $META_FILE
-    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.preRelease=="release" or .preRelease=="")]' | jq -r '.[] | "\(.version)=assembly-sdk/\(.version)/\(.name)"'); do
-      echo ${row} >> $META_FILE
+    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.metadata.kind?=="release")]' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
+      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
-    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.preRelease!="")]' | jq -r '.[] | "\(.version)-\(.preRelease)=assembly-sdk/\(.version)/\(.name)"'); do
-      echo ${row} >> $META_FILE
+    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind?!="" and .metadata.kind?!="develop" and .metadata.kind?!="release")]' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
+      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
+    done
+    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.metadata.kind?=="develop")]' | jq -r '.[] | "develop=\(.name)"'); do
+      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
   }
 
   symenv_fetch_remote_versions() {
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
-    PACKAGES_AVAILABLE=$(curl --silent --request GET 'https://iportal.waf-symbiont.io/api/listPackages' \
+    PACKAGES_AVAILABLE=$(curl --silent --request GET 'https://'${SYMENV_REGISTRY}'/api/listSDKPackages' \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
 
     HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
@@ -138,14 +141,14 @@
       OS_FILTER="linux"
     elif [[ "${OSTYPE}" == "darwin"* ]]; then
       # Mac OSX
-      OS_FILTER="mac"
+      OS_FILTER="macos"
     else
       echo "Your OS is not supported."
       return 2;
     fi
 
-    PACKAGES_OF_INTEREST=`echo ${PACKAGES_AVAILABLE} | jq .packages | jq '."assembly-sdk"' | \
-      jq '[.[] | select(.platform=="'${OS_FILTER}'")]'`
+    PACKAGES_OF_INTEREST=`echo ${PACKAGES_AVAILABLE} | jq .packages | \
+      jq '[.[] | select(.metadata.os=="'${OS_FILTER}'")]'`
     symenv_build_remote_versions_resolution "${PACKAGES_OF_INTEREST}"
     symenv_echo "${PACKAGES_OF_INTEREST}"
   }
@@ -163,18 +166,28 @@
     done
     PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions)
     if [ ${SHOW_ALL} -ne 1 ]; then
-      PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.preRelease=="release" or .preRelease=="" and .version !="develop")]'`
-      DISPLAY_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | "\(.version)"]' | jq --raw-output '.[]'`
+      PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
+      DISPLAY_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
       symenv_echo "${DISPLAY_VERSIONS}"
     else
-      RELEASE_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.preRelease=="release" or .preRelease=="")]' | \
-        jq '[.[] | "\(.version)"]' | jq --raw-output '.[]'`
-      DISPLAY_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
-        jq '[.[] | "\(.version)-\(.preRelease)"]' | jq --raw-output '.[]'`
-      symenv_echo "${RELEASE_VERSIONS}"
-      symenv_echo "${DISPLAY_VERSIONS}"
+      RELEASE_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
+      ALL_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]'`
+      DEVELOP_PACKAGE_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]'`
+      DISPLAY_VERSIONS=`echo ${ALL_PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
+        jq '[.[] | "\(.metadata.version)-\(.metadata.kind)"]' | jq --raw-output '.[]'`
+      RELEASE_VERSIONS=`echo ${RELEASE_PACKAGES_OF_INTEREST} |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
+      DEVELOP_VERSION=`echo ${DEVELOP_PACKAGE_OF_INTEREST} | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'`
+      #  | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'
+      if [ -n "$RELEASE_VERSIONS" ]; then
+        symenv_echo "${RELEASE_VERSIONS}"
+      fi
+      if [ -n "$DISPLAY_VERSIONS" ]; then
+        symenv_echo "${DISPLAY_VERSIONS}"
+      fi
+      if [ -n "$DEVELOP_VERSION" ]; then
+        symenv_echo "${DEVELOP_VERSION}"
+      fi
     fi
-
   }
 
   symenv_deactivate() {
@@ -206,28 +219,40 @@
 
   symenv_send_token_request() {
     TOKEN_RESPONSE=$(curl --silent --request POST \
-      --url "https://${SYMENV_TENANT}/oauth/token" \
+      --url "https://$2/oauth/token" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data grant_type=urn:ietf:params:oauth:grant-type:device_code \
       --data device_code="$1" \
-      --data "client_id=${SYMENV_CLIENT_ID}")
+      --data "client_id=$3")
     SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
     export SYMENV_ACCESS_TOKEN
   }
 
   symenv_do_auth() {
+    CONFIG_RESPONSE=$(curl --silent --request GET \
+      --url "https://${SYMENV_REGISTRY}/api/config")
+    SYMENV_AUTH0_CLIENT_DOMAIN=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_DOMAIN | tr -d \"`
+    SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
+    SYMENV_AUTH0_CLIENT_ID=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLI_CLIENT_ID | tr -d \"`
+
+#    symenv_echo "Found ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_AUDIENCE} ${SYMENV_AUTH0_CLIENT_ID}"
+
     local NEXT_WAIT_TIME
     unset SYMENV_ACCESS_TOKEN
     CODE_REQUEST_RESPONSE=$(curl --silent --request POST \
-      --url "https://${SYMENV_TENANT}/oauth/device/code" \
+      --url "https://${SYMENV_AUTH0_CLIENT_DOMAIN}/oauth/device/code" \
       --header 'content-type: application/x-www-form-urlencoded' \
-      --data "client_id=${SYMENV_CLIENT_ID}" \
+      --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
       --data scope='read:current_user update:current_user_metadata' \
-      --data audience=https://iportal.symbiont.io)
+      --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
+
+#    symenv_echo "${CODE_REQUEST_RESPONSE}"
 
     DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
     USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
     VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
+
+#    symenv_echo "Authentication proceeding for ${USER_CODE}, ${DEVICE_CODE} - requested to navigate to ${VERIFICATION_URL}"
 
     if symenv_has open
     then
@@ -240,7 +265,7 @@
     fi
     NEXT_WAIT_TIME=1
     until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && ! -z ${SYMENV_ACCESS_TOKEN} ]]; do
-      symenv_send_token_request ${DEVICE_CODE}
+      symenv_send_token_request ${DEVICE_CODE} ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_ID}
       sleep $((NEXT_WAIT_TIME++))
     done
     [ ${NEXT_WAIT_TIME} -lt 30 ]
@@ -292,24 +317,19 @@
     fi
     mkdir -p ${TARGET_PATH}
 
-    SIGNED_URL_RESPONSE=$(curl --silent --request GET "https://iportal.waf-symbiont.io/api/getPackage?package=${MAPPED_VERSION}" \
+    SIGNED_URL_RESPONSE=$(curl --silent --request GET "https://${SYMENV_REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
     SIGNED_DOWNLOAD_URL=`echo ${SIGNED_URL_RESPONSE} | jq .signedUrl | tr -d \"`
 
-    TARGET_FILE="${TARGET_PATH}/download.tbz2"
+    TARGET_FILE="${TARGET_PATH}/download.tar.gz"
     curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
-    tar xf "${TARGET_FILE}" --directory "${TARGET_PATH}"
+    tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}"
     rm ${TARGET_FILE}
 
-    if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
-      # Linux
-      CONTAINING_FOLDER=`find ${TARGET_PATH} -mindepth 2 -maxdepth 2 -type d`
-      mv "${CONTAINING_FOLDER}"/* ${TARGET_PATH}
-    elif [[ "${OSTYPE}" == "darwin"* ]]; then
-      # Mac OSX
-      INSTALLER_NAME=`ls ${TARGET_PATH} | grep .pkg`
-      sudo installer -pkg ${TARGET_PATH}/${INSTALLER_NAME} -target ${TARGET_PATH}
-    fi
+    CONTAINING_FOLDER=`find ${TARGET_PATH} -mindepth 2 -maxdepth 2 -type d`
+    mv "${CONTAINING_FOLDER}"/* ${TARGET_PATH}
+    FOLDER_TO_REMOVE=`dirname ${CONTAINING_FOLDER}`
+    rm -r $FOLDER_TO_REMOVE
 
     if [[ -e "${SYMENV_DIR}/versions/current" ]]; then
       rm "${SYMENV_DIR}/versions/current"
@@ -372,6 +392,10 @@
       symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
       symenv_echo "✅ Authentication successful"
     fi
+  }
+
+  symenv_config() {
+    # TODO
   }
 
   symenv() {
@@ -472,6 +496,9 @@
       ;;
       "deactivate")
         symenv_deactivate
+      ;;
+      "config")
+        symenv_config
       ;;
       "current")
         if symenv_has_managed_sdk; then
