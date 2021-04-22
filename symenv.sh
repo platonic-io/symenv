@@ -1,12 +1,5 @@
 {
   symenv_SCRIPT_SOURCE="$_"
-
-  if ! command -v jq &> /dev/null
-  then
-    symenv_err "'jq' could not be found - please make sure it is installed"
-    return 101
-  fi
-
   export SYMENV_REGISTRY=portal-staging.waf-symbiont.io
 
   symenv_is_zsh() {
@@ -36,6 +29,12 @@
   symenv_has() {
     type "${1-}" >/dev/null 2>&1
   }
+
+  if ! command -v jq &> /dev/null
+  then
+    symenv_err "'jq' could not be found - please make sure it is installed"
+    return 101
+  fi
 
   # Make zsh glob matching behave same as bash
   # This fixes the "zsh: no matches found" errors
