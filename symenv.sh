@@ -247,7 +247,7 @@
   }
 
   symenv_do_auth() {
-    REGISTRY=${SYMENV_REGISTRY}
+    REGISTRY=$1
     CONFIG_REGISTRY=`symenv_config get registry`
     [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
 
@@ -432,9 +432,15 @@
     while [ $# -ne 0 ]; do
       case "$1" in
         --force-auth) FORCE_REAUTH=1 ;;
+        --registry*)
+          REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          symenv_echo "Using registry host override: $REGISTRY_OVERRIDE"
+        ;;
       esac
       shift
     done
+    REGISTRY=$SYMENV_REGISTRY
+    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
     # TODO: From local directory, find up
     if [[ -e "${HOME}/.symenvrc" && $FORCE_REAUTH -ne 1 ]]; then
       # Check if the token has expired, if so trigger a re-auth
@@ -442,7 +448,7 @@
       symenv_validate_token ${TOKEN}
       export SYMENV_ACCESS_TOKEN=TOKEN
     else
-      symenv_do_auth
+      symenv_do_auth $REGISTRY
       touch "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
       symenv_echo "✅ Authentication successful"
