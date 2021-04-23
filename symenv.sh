@@ -171,7 +171,6 @@
         --all) SHOW_ALL=1 ;;
         --registry*)
           REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
-          symenv_echo "Using registry host override: $REGISTRY_OVERRIDE"
         ;;
       esac
       shift
@@ -257,7 +256,7 @@
     SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
     SYMENV_AUTH0_CLIENT_ID=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLI_CLIENT_ID | tr -d \"`
 
-#    symenv_echo "Found ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_AUDIENCE} ${SYMENV_AUTH0_CLIENT_ID}"
+    symenv_echo "Found ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_AUDIENCE} ${SYMENV_AUTH0_CLIENT_ID}"
 
     local NEXT_WAIT_TIME
     unset SYMENV_ACCESS_TOKEN
@@ -268,13 +267,13 @@
       --data scope='read:current_user update:current_user_metadata' \
       --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
 
-#    symenv_echo "${CODE_REQUEST_RESPONSE}"
+    symenv_echo "${CODE_REQUEST_RESPONSE}"
 
     DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
     USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
     VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
 
-    symenv_echo "Authentication proceeding, please validated the user code: ${USER_CODE}"
+    symenv_echo "Authentication proceeding, please validate the user code: ${USER_CODE}"
 
     if symenv_has open
     then
@@ -311,7 +310,6 @@
       case "$1" in
         --registry*)
           REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
-          symenv_echo "Using registry override: $REGISTRY_OVERRIDE"
           ;;
         --force) FORCE_REINSTALL=1 ;;
         *)
@@ -409,6 +407,7 @@
   }
 
   symenv_config() {
+    touch "${HOME}/.symenvrc"
     while [ $# -ne 0 ]; do
       case "$1" in
         get)
