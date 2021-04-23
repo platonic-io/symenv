@@ -125,8 +125,13 @@
   }
 
   symenv_fetch_remote_versions() {
+    local REGISTRY
+    REGISTRY_OVERRIDE=$1
+    REGISTRY=$SYMENV_REGISTRY
+    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
+
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
-    PACKAGES_AVAILABLE=$(curl --silent --request GET 'https://'${SYMENV_REGISTRY}'/api/listSDKPackages' \
+    PACKAGES_AVAILABLE=$(curl --silent --request GET 'https://'${REGISTRY}'/api/listSDKPackages' \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
 
     HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
@@ -155,15 +160,25 @@
   symenv_list_remote_versions() {
     local SHOW_ALL
     local HAS_ERROR
+    local REGISTRY_OVERRIDE
+    local REGISTRY
     HAS_ERROR=""
     SHOW_ALL=0
     while [ $# -ne 0 ]; do
       case "$1" in
         --all) SHOW_ALL=1 ;;
+        --registry*)
+          REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          symenv_echo "Using registry host override: $REGISTRY_OVERRIDE"
+        ;;
       esac
       shift
     done
-    PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions)
+
+    REGISTRY=${SYMENV_REGISTRY}
+    if [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
+
+    PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions ${REGISTRY})
     if [ ${SHOW_ALL} -ne 1 ]; then
       PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
       DISPLAY_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
@@ -280,10 +295,16 @@
     local HAS_ERROR
     local MAPPED_VERSION
     local PROVIDED_VERSION
+    local REGISTRY_OVERRIDE
+    local REGISTRY
     HAS_ERROR=""
     FORCE_REINSTALL=0
     while [ $# -ne 0 ]; do
       case "$1" in
+        --registry*)
+          REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          symenv_echo "Using registry override: $REGISTRY_OVERRIDE"
+          ;;
         --force) FORCE_REINSTALL=1 ;;
         *)
           if [ -n "${1-}" ]; then
@@ -295,6 +316,8 @@
     done
 
     echo "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL})"
+    REGISTRY=${SYMENV_REGISTRY}
+    if [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
@@ -302,6 +325,11 @@
     fi
     MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta ${PROVIDED_VERSION})"
     # TODO: Handle negative cases
+
+    if [ -z "$MAPPED_VERSION" ]; then
+      symenv_err "No such version found in the remote repo"
+      return 404
+    fi
 
     mkdir -p ${SYMENV_DIR}/versions/
     TARGET_PATH=${SYMENV_DIR}/versions/${PROVIDED_VERSION}
@@ -316,7 +344,7 @@
     fi
     mkdir -p ${TARGET_PATH}
 
-    SIGNED_URL_RESPONSE=$(curl --silent --request GET "https://${SYMENV_REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
+    SIGNED_URL_RESPONSE=$(curl --silent --request GET "https://${REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
     SIGNED_DOWNLOAD_URL=`echo ${SIGNED_URL_RESPONSE} | jq .signedUrl | tr -d \"`
 
@@ -368,6 +396,24 @@
       symenv_err "Attempting to get undefined field"
     fi
     symenv_echo "$(sed -rn "s/^${KEY}=(.*)$/\1/p" ${FILE})"
+  }
+
+  symenv_config() {
+    while [ $# -ne 0 ]; do
+      case "$1" in
+        get)
+          # symenv config get <key>
+          symenv_echo `symenv_config_get "${HOME}/.symenvrc" "${@:2}"`
+        ;;
+        set)
+          symenv_config_set "${HOME}/.symenvrc" "${@:2}"
+        ;;
+        ls)
+          cat "${HOME}/.symenvrc"
+        ;;
+      esac
+      shift
+    done
   }
 
   symenv_auth() {
@@ -426,7 +472,7 @@
       ;;
       'install' | 'i')
         symenv_auth "$@"
-        symenv_install_from_remote "$@" ${PROVIDED_VERSION}
+        symenv_install_from_remote "$@"
       ;;
       "use")
         local PROVIDED_VERSION
@@ -500,6 +546,9 @@
           symenv_echo "Using system version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
           symenv_echo $(which sym)
         fi
+      ;;
+      "config")
+        symenv_config "$@"
       ;;
       "version" | "-version" |  "--version")
         # TODO
