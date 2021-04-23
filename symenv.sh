@@ -1,6 +1,6 @@
 {
   symenv_SCRIPT_SOURCE="$_"
-  export SYMENV_REGISTRY=portal-staging.waf-symbiont.io
+  export SYMENV_REGISTRY=iportal.waf-symbiont.io
 
   symenv_is_zsh() {
     [ -n "${ZSH_VERSION-}" ]
@@ -128,6 +128,8 @@
     local REGISTRY
     REGISTRY_OVERRIDE=$1
     REGISTRY=$SYMENV_REGISTRY
+    CONFIG_REGISTRY=`symenv_config get registry`
+    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
     [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
@@ -176,7 +178,9 @@
     done
 
     REGISTRY=${SYMENV_REGISTRY}
-    if [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
+    CONFIG_REGISTRY=`symenv_config get registry`
+    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
 
     PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions ${REGISTRY})
     if [ ${SHOW_ALL} -ne 1 ]; then
@@ -243,8 +247,12 @@
   }
 
   symenv_do_auth() {
+    REGISTRY=${SYMENV_REGISTRY}
+    CONFIG_REGISTRY=`symenv_config get registry`
+    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+
     CONFIG_RESPONSE=$(curl --silent --request GET \
-      --url "https://${SYMENV_REGISTRY}/api/config")
+      --url "https://${REGISTRY}/api/config")
     SYMENV_AUTH0_CLIENT_DOMAIN=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_DOMAIN | tr -d \"`
     SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
     SYMENV_AUTH0_CLIENT_ID=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLI_CLIENT_ID | tr -d \"`
@@ -266,7 +274,7 @@
     USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
     VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
 
-#    symenv_echo "Authentication proceeding for ${USER_CODE}, ${DEVICE_CODE} - requested to navigate to ${VERIFICATION_URL}"
+    symenv_echo "Authentication proceeding, please validated the user code: ${USER_CODE}"
 
     if symenv_has open
     then
@@ -317,7 +325,9 @@
 
     echo "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL})"
     REGISTRY=${SYMENV_REGISTRY}
-    if [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
+    CONFIG_REGISTRY=`symenv_config get registry`
+    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
