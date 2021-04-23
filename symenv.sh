@@ -256,8 +256,6 @@
     SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
     SYMENV_AUTH0_CLIENT_ID=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLI_CLIENT_ID | tr -d \"`
 
-    symenv_echo "Found ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_AUDIENCE} ${SYMENV_AUTH0_CLIENT_ID}"
-
     local NEXT_WAIT_TIME
     unset SYMENV_ACCESS_TOKEN
     CODE_REQUEST_RESPONSE=$(curl --silent --request POST \
@@ -266,8 +264,6 @@
       --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
       --data scope='read:current_user update:current_user_metadata' \
       --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
-
-    symenv_echo "${CODE_REQUEST_RESPONSE}"
 
     DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
     USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
