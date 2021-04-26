@@ -229,6 +229,7 @@
 
   symenv_validate_token() {
     TOKEN=${1-}
+    REGISTRY=${2-}
     # TODO
     # symenv_echo "$(symenv_decode_jwt 2 ${TOKEN})"
     # symenv_echo "Validating ${TOKEN}"
@@ -269,6 +270,7 @@
     USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
     VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
 
+    symenv_echo "If your browser hasn't automatically opened, please navigate to ${VERIFICATION_URL}"
     symenv_echo "Authentication proceeding, please validate the user code: ${USER_CODE}"
 
     if symenv_has open
@@ -277,8 +279,6 @@
     elif symenv_has xdg-open
     then
       xdg-open ${VERIFICATION_URL}
-    else
-      echo "Please authenticate using the following URL: ${VERIFICATION_URL}"
     fi
     NEXT_WAIT_TIME=1
     until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && ! -z ${SYMENV_ACCESS_TOKEN} ]]; do
@@ -440,7 +440,7 @@
     if [[ -e "${HOME}/.symenvrc" && $FORCE_REAUTH -ne 1 ]]; then
       # Check if the token has expired, if so trigger a re-auth
       TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
-      symenv_validate_token ${TOKEN}
+      symenv_validate_token ${TOKEN} ${REGISTRY}
       export SYMENV_ACCESS_TOKEN=TOKEN
     else
       symenv_do_auth $REGISTRY
@@ -478,8 +478,21 @@
 #    symenv_echo "COMMAND: ${COMMAND}"
     case $COMMAND in
       'help' | '--help')
-        symenv_echo "Symbiont Assembly SDK Manager (v0.0.1)"
-        # TODO: Add help
+        symenv_echo "Symbiont Assembly SDK Manager (v0.1.0)"
+        symenv_echo 'Usage:'
+        symenv_echo '  symenv --help                                  Show this message'
+        symenv_echo '  symenv --version                               Print out the version of symenv'
+        symenv_echo '  symenv current                                 Print out the installed version of the SDK'
+        symenv_echo '  symenv config ls                               Print out the configuration used by symenv'
+        symenv_echo '  symenv install <version>                       Download and install a <version> of the SDK'
+        symenv_echo '    --registry=<registry>                          When downloading, use this registry'
+        symenv_echo '    --force-auth                                   Refresh the user token before downloading'
+        symenv_echo '  symenv use <version>                           Use version <version> of the SDK'
+        symenv_echo '    --silent                                       No output'
+        symenv_echo '  symenv deactivate                              Remove the symlink binding the installed version to current'
+        symenv_echo '  symenv ls | list | local                       List the installed versions of the SDK'
+        symenv_echo '  symenv ls-remote | list-remote | remote        List the remote versions of the SDK'
+        symenv_echo '    --all                                          Include the non-release versions'
       ;;
       'install' | 'i')
         symenv_auth "$@"
@@ -487,8 +500,6 @@
       ;;
       "use")
         local PROVIDED_VERSION
-        local SYMENV_USE_SILENT
-        SYMENV_USE_SILENT=0
 
         while [ $# -ne 0 ]; do
           case "$1" in
@@ -512,8 +523,6 @@
         elif [ "_${PROVIDED_VERSION}" = "_default" ]; then
           return 0
         fi
-
-        # symenv_err "TODO: USE ${PROVIDED_VERSION} silent: ${SYMENV_USE_SILENT}"
 
         # Version is system - deactivate our managed version for now
         if [ "_${PROVIDED_VERSION}" = '_system' ]; then
@@ -562,8 +571,7 @@
         symenv_config "$@"
       ;;
       "version" | "-version" |  "--version")
-        # TODO
-        symenv_err "TODO: Version"
+        symenv_echo "Symbiont Assembly SDK Manager (v0.1.0)"
       ;;
       *)
         >&2 symenv --help
