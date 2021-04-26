@@ -1,6 +1,7 @@
 {
   symenv_SCRIPT_SOURCE="$_"
   export SYMENV_REGISTRY=iportal.waf-symbiont.io
+  export SYMENV_DEBUG=0
 
   symenv_is_zsh() {
     [ -n "${ZSH_VERSION-}" ]
@@ -14,11 +15,18 @@
     command printf %s\\n "$*" 2>/dev/null
   }
 
+  symenv_debug() {
+    if [[ ${SYMENV_DEBUG} == 1 ]]; then
+      echo "$*" >> symenv_debug.log
+    fi
+  }
+
   symenv_cd() {
     \cd "$@"
   }
 
   symenv_err() {
+    symenv_debug "$@"
     >&2 symenv_echo "$@"
   }
 
@@ -92,6 +100,8 @@
   symenv_local_versions() {
     if [ -e "${SYMENV_DIR}/versions" ]; then
       find "${SYMENV_DIR}/versions/" -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 basename
+    else
+      symenv_debug "No managed versions/ folder in symenv_dir ${SYMENV_DIR}"
     fi
   }
 
@@ -104,26 +114,6 @@
     fi
   }
 
-  symenv_build_remote_versions_resolution() {
-    local META_FILE
-    DATA=${1}
-
-    META_FILE="${SYMENV_DIR}/versions/versions.meta"
-    if [ ! -e "${SYMENV_DIR}/versions" ]; then
-      mkdir -p "${SYMENV_DIR}/versions"
-    fi
-    echo "" > $META_FILE
-    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.metadata.kind?=="release")]' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
-      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
-    done
-    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind?!="" and .metadata.kind?!="develop" and .metadata.kind?!="release")]' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
-      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
-    done
-    for row in $(symenv_echo ${DATA} | jq -r '[.[] | select(.metadata.kind?=="develop")]' | jq -r '.[] | "develop=\(.name)"'); do
-      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
-    done
-  }
-
   symenv_fetch_remote_versions() {
     local REGISTRY
     REGISTRY_OVERRIDE=$1
@@ -132,9 +122,13 @@
     [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
     [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
 
+    symenv_debug "Using remote registry ${REGISTRY}"
+
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     PACKAGES_AVAILABLE=$(curl --silent --request GET 'https://'${REGISTRY}'/api/listSDKPackages' \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
+
+     symenv_debug "Package response: ${PACKAGES_AVAILABLE}"
 
     HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
@@ -149,14 +143,35 @@
       # Mac OSX
       OS_FILTER="macos"
     else
-      echo "Your OS is not supported."
+      symenv_debug "Using unsupported OS."
+      symenv_err "Your OS is not supported."
       return 2;
     fi
 
+    PACKAGES_EXTRACT=`echo ${PACKAGES_AVAILABLE} | jq .packages | jq '[.[] | .name]'`
+    symenv_debug "Found packages:"
+    symenv_debug "${PACKAGES_EXTRACT}"
+
     PACKAGES_OF_INTEREST=`echo ${PACKAGES_AVAILABLE} | jq .packages | \
       jq '[.[] | select(.metadata.os=="'${OS_FILTER}'")]'`
-    symenv_build_remote_versions_resolution "${PACKAGES_OF_INTEREST}"
-    symenv_echo "${PACKAGES_OF_INTEREST}"
+
+    local META_FILE
+    META_FILE="${SYMENV_DIR}/versions/versions.meta"
+    if [ ! -e "${SYMENV_DIR}/versions" ]; then
+      mkdir -p "${SYMENV_DIR}/versions"
+    fi
+    symenv_debug "Caching versions resolution to ${META_FILE}"
+    echo "" > $META_FILE
+    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
+      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
+    done
+    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
+      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
+    done
+    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '.[1] | "develop=\(.name)"'); do
+      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
+    done
+    symenv_echo ${PACKAGES_OF_INTEREST}
   }
 
   symenv_list_remote_versions() {
@@ -182,11 +197,21 @@
     [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
 
     PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions ${REGISTRY})
+    if jq -e . >/dev/null 2>&1 <<<"$PACKAGES_OF_INTEREST"; then
+      symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
+    else
+      symenv_err "Failed to parse packages ${PACKAGES_OF_INTEREST}"
+      return 404
+    fi
+    LENGTH=`echo ${PACKAGES_OF_INTEREST} | jq length`
+    symenv_debug "${LENGTH} packages found"
     if [ ${SHOW_ALL} -ne 1 ]; then
+      symenv_debug "Filtering out to releases only"
       PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
       DISPLAY_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
       symenv_echo "${DISPLAY_VERSIONS}"
     else
+      symenv_debug "Filtering out to all packages"
       RELEASE_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
       ALL_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]'`
       DEVELOP_PACKAGE_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]'`
@@ -211,6 +236,8 @@
     if [ -e "${SYMENV_DIR}/current" ]; then
       rm "${SYMENV_DIR}/current"
       symenv_echo "Deactivated ${SYMENV_DIR}/current"
+    else
+      symenv_debug "Current managed SDK version not found"
     fi
   }
 
@@ -243,6 +270,7 @@
       --data device_code="$1" \
       --data "client_id=$3")
     SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
+    symenv_debug "Using token: ${SYMENV_ACCESS_TOKEN}"
     export SYMENV_ACCESS_TOKEN
   }
 
@@ -251,11 +279,16 @@
     CONFIG_REGISTRY=`symenv_config get registry`
     [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
 
+    symenv_debug "Authenticating to registry ${REGISTRY}"
+
     CONFIG_RESPONSE=$(curl --silent --request GET \
       --url "https://${REGISTRY}/api/config")
     SYMENV_AUTH0_CLIENT_DOMAIN=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_DOMAIN | tr -d \"`
     SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
     SYMENV_AUTH0_CLIENT_ID=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLI_CLIENT_ID | tr -d \"`
+
+    symenv_debug "Got authentication config:"
+    symenv_debug "${CONFIG_RESPONSE}"
 
     local NEXT_WAIT_TIME
     unset SYMENV_ACCESS_TOKEN
@@ -265,6 +298,9 @@
       --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
       --data scope='read:current_user update:current_user_metadata' \
       --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
+
+    symenv_debug "Got authentication challenge:"
+    symenv_debug "${CODE_REQUEST_RESPONSE}"
 
     DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
     USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
@@ -317,18 +353,24 @@
       shift
     done
 
-    echo "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL})"
     REGISTRY=${SYMENV_REGISTRY}
     CONFIG_REGISTRY=`symenv_config get registry`
     [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
     [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
+    symenv_debug "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL}, registry: ${REGISTRY})"
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
-      PACKAGES=$(symenv_fetch_remote_versions)
+      PACKAGES=$(symenv_fetch_remote_versions ${REGISTRY})
+      if jq -e . >/dev/null 2>&1 <<<"$PACKAGES_OF_INTEREST"; then
+        symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
+      else
+        symenv_err "Failed to parse packages ${PACKAGES_OF_INTEREST}"
+        return 404
+      fi
     fi
     MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta ${PROVIDED_VERSION})"
-    # TODO: Handle negative cases
+    symenv_debug "Mapped version ${PROVIDED_VERSION} to package ${MAPPED_VERSION}"
 
     if [ -z "$MAPPED_VERSION" ]; then
       symenv_err "No such version found in the remote repo"
@@ -339,8 +381,8 @@
     TARGET_PATH=${SYMENV_DIR}/versions/${PROVIDED_VERSION}
 
     if [[ -e ${TARGET_PATH} && ${FORCE_REINSTALL} -ne 1 ]]; then
-      symenv_echo "Requested version (${PROVIDED_VERSION}) is already installed locally."
-      symenv_echo "To force reinstallation from remote use the \`--force\` argument"
+      symenv_err "Requested version (${PROVIDED_VERSION}) is already installed locally."
+      symenv_err "To force reinstallation from remote use the \`--force\` argument"
       return 0
     fi
     if [[ -e ${TARGET_PATH} ]]; then
@@ -351,6 +393,7 @@
     SIGNED_URL_RESPONSE=$(curl --silent --request GET "https://${REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
     SIGNED_DOWNLOAD_URL=`echo ${SIGNED_URL_RESPONSE} | jq .signedUrl | tr -d \"`
+    symenv_debug "Got signed URL: ${SIGNED_DOWNLOAD_URL}"
 
     TARGET_FILE="${TARGET_PATH}/download.tar.gz"
     curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
@@ -381,7 +424,10 @@
       symenv_err "Attempting to set undefined field"
     fi
     VALUE=${3-}
-    if ! grep -R "^[#]*\s*${KEY}=.*" ${FILE} > /dev/null; then
+    symenv_debug "Setting config key ${KEY} to ${VALUE}"
+    HAS_VALUE=`grep -R "^[#]*\s*${KEY}=.*" ${FILE}`
+    symenv_debug "Value existing: ${HAS_VALUE}"
+    if [ -z ${HAS_VALUE} ]; then
       echo "${KEY}=${VALUE}" >> ${FILE}
     else
       sed -i '' -r "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
@@ -429,7 +475,7 @@
         --force-auth) FORCE_REAUTH=1 ;;
         --registry*)
           REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
-          symenv_echo "Using registry host override: $REGISTRY_OVERRIDE"
+          symenv_debug "Using auth registry override: $REGISTRY_OVERRIDE"
         ;;
       esac
       shift
@@ -475,7 +521,12 @@
     COMMAND="${1-}"
     shift
 
-#    symenv_echo "COMMAND: ${COMMAND}"
+    if [[ "$*" == *"--debug"* ]]; then
+      export SYMENV_DEBUG=1
+      symenv_debug "Using debug output"
+    fi
+
+    symenv_debug "$COMMAND" "$@"
     case $COMMAND in
       'help' | '--help')
         symenv_echo "Symbiont Assembly SDK Manager (v0.1.0)"
@@ -500,6 +551,8 @@
       ;;
       "use")
         local PROVIDED_VERSION
+        local SYMENV_USE_SILENT
+        SYMENV_USE_SILENT=0
 
         while [ $# -ne 0 ]; do
           case "$1" in
@@ -523,6 +576,8 @@
         elif [ "_${PROVIDED_VERSION}" = "_default" ]; then
           return 0
         fi
+
+        # symenv_err "TODO: USE ${PROVIDED_VERSION} silent: ${SYMENV_USE_SILENT}"
 
         # Version is system - deactivate our managed version for now
         if [ "_${PROVIDED_VERSION}" = '_system' ]; then
@@ -581,7 +636,6 @@
   }
 
   symenv_auto() {
-    #TODO
     symenv use --silent default >/dev/null
   }
 
@@ -599,8 +653,8 @@ EOF
     if symenv_supports_source_options; then
       while [ $# -ne 0 ]; do
         case "$1" in
-        install) SYMENV_AUTO_MODE='install' ;;
-        --no-use) SYMENV_AUTO_MODE='none' ;;
+          install) SYMENV_AUTO_MODE='install' ;;
+          --no-use) SYMENV_AUTO_MODE='none' ;;
         esac
         shift
       done
@@ -609,5 +663,4 @@ EOF
   }
 
   symenv_process_parameters "$@"
-
 }
