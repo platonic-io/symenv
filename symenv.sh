@@ -276,6 +276,7 @@
 
   symenv_do_auth() {
     REGISTRY=$1
+    symenv_debug "Registry passed to do_auth ${REGISTRY}"
     CONFIG_REGISTRY=`symenv_config get registry`
     [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
 
@@ -469,6 +470,7 @@
 
   symenv_auth() {
     local FORCE_REAUTH
+    local REGISTRY_OVERRIDE
     FORCE_REAUTH=0
     while [ $# -ne 0 ]; do
       case "$1" in
@@ -494,6 +496,8 @@
       symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
       symenv_echo "✅ Authentication successful"
     fi
+    unset FORCE_REAUTH
+    unset REGISTRY_OVERRIDE
   }
 
   symenv() {
