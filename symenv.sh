@@ -431,7 +431,7 @@
     if [ -z ${HAS_VALUE} ]; then
       echo "${KEY}=${VALUE}" >> ${FILE}
     else
-      sed -i '' -r "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
+      sed -i '' -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
     fi
   }
 
@@ -446,7 +446,7 @@
     if [[ "" == "${KEY}" ]]; then
       symenv_err "Attempting to get undefined field"
     fi
-    symenv_echo "$(sed -rn "s/^${KEY}=(.*)$/\1/p" ${FILE})"
+    symenv_echo "$(sed -En "s/^${KEY}=(.*)$/\1/p" ${FILE})"
   }
 
   symenv_config() {
