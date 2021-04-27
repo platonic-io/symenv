@@ -1,6 +1,6 @@
 {
   symenv_SCRIPT_SOURCE="$_"
-  export SYMENV_REGISTRY=iportal.waf-symbiont.io
+  export SYMENV_REGISTRY=iportal.symbiont.io
   export SYMENV_DEBUG=0
 
   symenv_is_zsh() {
