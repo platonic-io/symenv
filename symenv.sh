@@ -233,8 +233,8 @@
   }
 
   symenv_deactivate() {
-    if [ -e "${SYMENV_DIR}/current" ]; then
-      rm "${SYMENV_DIR}/current"
+    if [ -e "${SYMENV_DIR}/versions/current" ]; then
+      rm "${SYMENV_DIR}/versions/current"
       symenv_echo "Deactivated ${SYMENV_DIR}/current"
     else
       symenv_debug "Current managed SDK version not found"
