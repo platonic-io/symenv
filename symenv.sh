@@ -154,6 +154,7 @@
 
     PACKAGES_OF_INTEREST=`echo ${PACKAGES_AVAILABLE} | jq .packages | \
       jq '[.[] | select(.metadata.os=="'${OS_FILTER}'")]'`
+    symenv_debug "Packages of interest: ${PACKAGES_OF_INTEREST}"
 
     local META_FILE
     META_FILE="${SYMENV_DIR}/versions/versions.meta"
@@ -163,12 +164,15 @@
     symenv_debug "Caching versions resolution to ${META_FILE}"
     echo "" > $META_FILE
     for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
+      symenv_debug "Caching release ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
     for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
+      symenv_debug "Caching other ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
-    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '.[1] | "develop=\(.name)"'); do
+    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '.[0] | "develop=\(.name)"'); do
+      symenv_debug "Caching develop ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
     symenv_echo ${PACKAGES_OF_INTEREST}
@@ -180,7 +184,6 @@
     local REGISTRY_OVERRIDE
     local REGISTRY
     HAS_ERROR=""
-    SHOW_ALL=0
     while [ $# -ne 0 ]; do
       case "$1" in
         --all) SHOW_ALL=1 ;;
