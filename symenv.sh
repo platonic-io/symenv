@@ -88,10 +88,27 @@
     [ "$(symenv deactivate >/dev/null 2>&1 && command -v sym)" != '' ]
   }
 
+  symenv_install_vscode_extension() {
+    if symenv_has_managed_sdk ; then
+      if symenv_has code ; then
+        EXTENSION_VSIX=`find ${SYMENV_DIR}/versions/current/ide -name "*.vsix"`
+        code --install-extension $EXTENSION_VSIX
+      else
+        symenv_err "'code' is not in your PATH. Follow the instructions at \
+        https://code.visualstudio.com/docs/editor/extension-marketplace#_command-line-extension-management to \
+        add the required utility to your PATH."
+        return 404
+      fi
+    else
+      symenv_err "No managed version of the SDK found locally."
+      return 404
+    fi
+  }
+
   symenv_has_managed_sdk() {
     VERSION="${1-}"
     if [[ "" = "${VERSION}" ]]; then
-      [ -e "${SYMENV_DIR}/current" ]
+      [ -e "${SYMENV_DIR}/versions/current" ]
     else
       [ -e "${SYMENV_DIR}/versions/${VERSION}" ]
     fi
@@ -535,7 +552,7 @@
 
     symenv_debug "$COMMAND" "$@"
     case $COMMAND in
-      'help' | '--help')
+      "help" | "--help")
         symenv_echo "Symbiont Assembly SDK Manager (v0.1.0)"
         symenv_echo 'Usage:'
         symenv_echo '  symenv --help                                  Show this message'
@@ -552,11 +569,11 @@
         symenv_echo '  symenv ls-remote | list-remote | remote        List the remote versions of the SDK'
         symenv_echo '    --all                                          Include the non-release versions'
       ;;
-      'install' | 'i')
+      "install" | "i")
         symenv_auth "$@"
         symenv_install_from_remote "$@"
       ;;
-      "use")
+      "use" | "activate")
         local PROVIDED_VERSION
         local SYMENV_USE_SILENT
         SYMENV_USE_SILENT=0
@@ -610,6 +627,9 @@
         fi
 
       ;;
+      "vscode")
+        symenv_install_vscode_extension
+      ;;
       "remote" | "ls-remote" | "list-remote")
         symenv_auth "$@"
         symenv_list_remote_versions "$@"
@@ -623,7 +643,7 @@
       "current")
         if symenv_has_managed_sdk; then
           symenv_echo "Using managed version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
-          symenv_echo $(ls -l ${SYMENV_DIR}/current)
+          symenv_echo $(ls -l ${SYMENV_DIR}/versions/current)
         else
           symenv_echo "Using system version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
           symenv_echo $(which sym)
