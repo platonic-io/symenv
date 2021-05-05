@@ -1,3 +1,4 @@
+#!/usr/bin/env sh
 {
   symenv_SCRIPT_SOURCE="$_"
   export SYMENV_REGISTRY=iportal.symbiont.io
@@ -97,11 +98,11 @@
         symenv_err "'code' is not in your PATH. Follow the instructions at \
         https://code.visualstudio.com/docs/editor/extension-marketplace#_command-line-extension-management to \
         add the required utility to your PATH."
-        return 404
+        return 44
       fi
     else
       symenv_err "No managed version of the SDK found locally."
-      return 404
+      return 44
     fi
   }
 
@@ -221,7 +222,7 @@
       symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
     else
       symenv_err "Failed to parse packages ${PACKAGES_OF_INTEREST}"
-      return 404
+      return 44
     fi
     LENGTH=`echo ${PACKAGES_OF_INTEREST} | jq length`
     symenv_debug "${LENGTH} packages found"
@@ -387,7 +388,7 @@
         symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
       else
         symenv_err "Failed to parse packages ${PACKAGES_OF_INTEREST}"
-        return 404
+        return 44
       fi
     fi
     MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta ${PROVIDED_VERSION})"
@@ -395,7 +396,7 @@
 
     if [ -z "$MAPPED_VERSION" ]; then
       symenv_err "No such version found in the remote repo"
-      return 404
+      return 44
     fi
 
     mkdir -p ${SYMENV_DIR}/versions/
