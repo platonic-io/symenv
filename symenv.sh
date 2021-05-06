@@ -202,6 +202,7 @@
     local REGISTRY_OVERRIDE
     local REGISTRY
     HAS_ERROR=""
+    SHOW_ALL=0
     while [ $# -ne 0 ]; do
       case "$1" in
         --all) SHOW_ALL=1 ;;
