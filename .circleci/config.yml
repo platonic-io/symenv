@@ -7,4 +7,4 @@ workflows:
   main:
     jobs:
       - shellcheck/check:
-          dir: ./
+          pattern: "*.sh"
