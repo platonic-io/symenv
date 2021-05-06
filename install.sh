@@ -109,10 +109,11 @@ install_symenv_from_git() {
       LATEST_TAG=$(git ls-remote --tags --exit-code --refs "$(symenv_source)" | \
         sed -E 's/^[[:xdigit:]]+[[:space:]]+refs\/tags\/(.+)/\1/g' | tail -n1)
       # Cloning repo
-      command git -c advice.detachedHead=false clone "$(symenv_source)" --depth=1 --branch "$LATEST_TAG" "${INSTALL_DIR}" || {
-        symenv_echo >&2 'Failed to clone symenv repo. Please report this!'
-        exit 2
-      }
+      command git -c advice.detachedHead=false clone "$(symenv_source)" --depth=1 --branch "$LATEST_TAG" "${INSTALL_DIR}" 2> /dev/null \
+       || {
+          symenv_echo >&2 'Failed to clone symenv repo. Please report this!'
+          exit 2
+        }
     fi
   fi
   # Try to fetch tag
