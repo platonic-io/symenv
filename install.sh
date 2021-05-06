@@ -27,7 +27,8 @@ symenv_install_dir() {
 }
 
 symenv_latest_version() {
-  symenv_echo "main"
+  symenv_echo $(git ls-remote --tags --exit-code --refs "$(symenv_source)" | \
+        sed -E 's/^[[:xdigit:]]+[[:space:]]+refs\/tags\/(.+)/\1/g' | tail -n1)
 }
 
 symenv_profile_is_bash_or_zsh() {
@@ -106,10 +107,8 @@ install_symenv_from_git() {
         exit 2
       }
     else
-      LATEST_TAG=$(git ls-remote --tags --exit-code --refs "$(symenv_source)" | \
-        sed -E 's/^[[:xdigit:]]+[[:space:]]+refs\/tags\/(.+)/\1/g' | tail -n1)
       # Cloning repo
-      command git -c advice.detachedHead=false clone "$(symenv_source)" --depth=1 --branch "$LATEST_TAG" "${INSTALL_DIR}" 2> /dev/null \
+      command git clone "$(symenv_source)" --depth=1 "${INSTALL_DIR}" 2> /dev/null \
        || {
           symenv_echo >&2 'Failed to clone symenv repo. Please report this!'
           exit 2
