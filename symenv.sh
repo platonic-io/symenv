@@ -151,7 +151,7 @@
     HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
       symenv_err "Authentication error"
-      return 401
+      return 41
     fi
 
     if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
@@ -257,7 +257,7 @@
   symenv_deactivate() {
     if [ -e "${SYMENV_DIR}/versions/current" ]; then
       rm "${SYMENV_DIR}/versions/current"
-      symenv_echo "Deactivated ${SYMENV_DIR}/current"
+      symenv_echo "Deactivated ${SYMENV_DIR}/versions/current"
     else
       symenv_debug "Current managed SDK version not found"
     fi
@@ -297,6 +297,8 @@
   }
 
   symenv_do_auth() {
+    symenv_echo "You will now be authenticated - please use your Symbiont Portal credentials"
+    sleep 3
     REGISTRY=$1
     symenv_debug "Registry passed to do_auth ${REGISTRY}"
     CONFIG_REGISTRY=`symenv_config get registry`
@@ -348,7 +350,7 @@
 
     if [[ ${SYMENV_ACCESS_TOKEN} == "null" || -z ${SYMENV_ACCESS_TOKEN} ]]; then
       symenv_err "🚫 Authentication did not complete in time"
-      return 401
+      return 41
     fi
   }
 
@@ -595,15 +597,13 @@
         done
 
         VERSION="${PROVIDED_VERSION}"
-        # symenv_echo "VERSION ${VERSION}"
+        symenv_debug "Activating version: ${VERSION}"
         if [ -z "${VERSION}" ]; then
           >&2 symenv --help
           return 127
         elif [ "_${PROVIDED_VERSION}" = "_default" ]; then
           return 0
         fi
-
-        # symenv_err "TODO: USE ${PROVIDED_VERSION} silent: ${SYMENV_USE_SILENT}"
 
         # Version is system - deactivate our managed version for now
         if [ "_${PROVIDED_VERSION}" = '_system' ]; then
@@ -620,9 +620,9 @@
 
         # Check if the version is installed
         if symenv_has_managed_sdk ${PROVIDED_VERSION}; then
-          symenv_echo "Switching used version to ${PROVIDED_VERSION}"
-          rm ${SYMENV_DIR}/current 2>/dev/null
-          ln -s ${SYMENV_DIR}/versions/${PROVIDED_VERSION} ${SYMENV_DIR}/current
+          symenv_echo "Switching managed version to ${PROVIDED_VERSION}"
+          rm ${SYMENV_DIR}/versions/current 2>/dev/null
+          ln -s ${SYMENV_DIR}/versions/${PROVIDED_VERSION} ${SYMENV_DIR}/versions/current
         else
           symenv_err "Version ${PROVIDED_VERSION} is not installed. Please install it before switching."
           return 127
@@ -644,8 +644,9 @@
       ;;
       "current")
         if symenv_has_managed_sdk; then
-          symenv_echo "Using managed version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
-          symenv_echo $(ls -l ${SYMENV_DIR}/versions/current)
+          TARGET=$(readlink ${SYMENV_DIR}/versions/current | sed "s|$SYMENV_DIR/versions/||g")
+          VERSION=$(sym --version)
+          symenv_echo "current -> $TARGET ($VERSION)"
         else
           symenv_echo "Using system version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
           symenv_echo $(which sym)
