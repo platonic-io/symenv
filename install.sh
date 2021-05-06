@@ -116,11 +116,18 @@ install_symenv_from_git() {
         }
     fi
   fi
-  command git -c advice.detachedHead=false --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" checkout -f --quiet FETCH_HEAD 2>/dev/null \
-    || {
-      symenv_echo >&2 "Failed to checkout the given version $SYMENV_VERSION. Please report this!"
-      exit 2
-    }
+  # Try to fetch tag
+  if command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" fetch origin tag "$SYMENV_VERSION" --depth=1 2>/dev/null; then
+    :
+  # Fetch given version
+  elif ! command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" fetch origin "$SYMENV_VERSION" --depth=1; then
+    symenv_echo >&2 "$fetch_error"
+    exit 1
+  fi
+  command git -c advice.detachedHead=false --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" checkout -f --quiet FETCH_HEAD || {
+    symenv_echo >&2 "Failed to checkout the given version $SYMENV_VERSION. Please report this!"
+    exit 2
+  }
   if [ -n "$(command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" show-ref refs/heads/master)" ]; then
     if command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" branch --quiet 2>/dev/null; then
       command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" branch --quiet -D master >/dev/null 2>&1
