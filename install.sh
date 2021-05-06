@@ -308,52 +308,57 @@ symenv_do_install() {
   COMPLETION_STR='[ -s "$SYMENV_DIR/bash_completion" ] && \. "$SYMENV_DIR/bash_completion"  # This loads symenv bash_completion\n'
   BASH_OR_ZSH=false
 
-  if [ -z "${SYMENV_PROFILE-}" ] ; then
-    local TRIED_PROFILE
-    if [ -n "${PROFILE}" ]; then
-      TRIED_PROFILE="${SYMENV_PROFILE} (as defined in \$PROFILE), "
-    fi
-    symenv_echo "=> Profile not found. Tried ${TRIED_PROFILE-}~/.bashrc, ~/.bash_profile, ~/.zshrc, and ~/.profile."
-    symenv_echo "=> Create one of them and run this script again"
-    symenv_echo "   OR"
-    symenv_echo "=> Append the following lines to the correct file yourself:"
-    command printf "${SOURCE_STR}"
-    command printf "${SDK_STR}"
-    symenv_echo
-  else
-    if symenv_profile_is_bash_or_zsh "${SYMENV_PROFILE-}"; then
-      BASH_OR_ZSH=true
-    fi
-    if ! command grep -qc '/symenv.sh' "$SYMENV_PROFILE"; then
-      symenv_echo "=> Appending symenv source string to $SYMENV_PROFILE"
-      command printf "${SOURCE_STR}" >> "$SYMENV_PROFILE"
-      command printf "${SDK_STR}" >> "$SYMENV_PROFILE"
-    else
-      symenv_echo "=> symenv source string already in ${SYMENV_PROFILE}"
-    fi
-    # shellcheck disable=SC2016
-    if ${BASH_OR_ZSH} && ! command grep -qc '$SYMENV_DIR/bash_completion' "$SYMENV_PROFILE"; then
-      symenv_echo "=> Appending bash_completion source string to $SYMENV_PROFILE"
-      command printf "$COMPLETION_STR" >> "$SYMENV_PROFILE"
-    else
-      symenv_echo "=> bash_completion source string already in ${SYMENV_PROFILE}"
-    fi
-  fi
-  if ${BASH_OR_ZSH} && [ -z "${SYMENV_PROFILE-}" ] ; then
-    symenv_echo "=> Please also append the following lines to the if you are using bash/zsh shell:"
-    command printf "${COMPLETION_STR}"
-  fi
+#  if [ -z "${SYMENV_PROFILE-}" ] ; then
+#    local TRIED_PROFILE
+#    if [ -n "${PROFILE}" ]; then
+#      TRIED_PROFILE="${SYMENV_PROFILE} (as defined in \$PROFILE), "
+#    fi
+#    symenv_echo "=> Profile not found. Tried ${TRIED_PROFILE-}~/.bashrc, ~/.bash_profile, ~/.zshrc, and ~/.profile."
+#    symenv_echo "=> Create one of them and run this script again"
+#    symenv_echo "   OR"
+#    symenv_echo "=> Append the following lines to the correct file yourself:"
+#    command printf "${SOURCE_STR}"
+#    command printf "${SDK_STR}"
+#    symenv_echo
+#  else
+#    if symenv_profile_is_bash_or_zsh "${SYMENV_PROFILE-}"; then
+#      BASH_OR_ZSH=true
+#    fi
+#    if ! command grep -qc '/symenv.sh' "$SYMENV_PROFILE"; then
+#      symenv_echo "=> Appending symenv source string to $SYMENV_PROFILE"
+#      command printf "${SOURCE_STR}" >> "$SYMENV_PROFILE"
+#      command printf "${SDK_STR}" >> "$SYMENV_PROFILE"
+#    else
+#      symenv_echo "=> symenv source string already in ${SYMENV_PROFILE}"
+#    fi
+#    # shellcheck disable=SC2016
+#    if ${BASH_OR_ZSH} && ! command grep -qc '$SYMENV_DIR/bash_completion' "$SYMENV_PROFILE"; then
+#      symenv_echo "=> Appending bash_completion source string to $SYMENV_PROFILE"
+#      command printf "$COMPLETION_STR" >> "$SYMENV_PROFILE"
+#    else
+#      symenv_echo "=> bash_completion source string already in ${SYMENV_PROFILE}"
+#    fi
+#  fi
+#  if ${BASH_OR_ZSH} && [ -z "${SYMENV_PROFILE-}" ] ; then
+#    symenv_echo "=> Please also append the following lines to the if you are using bash/zsh shell:"
+#    command printf "${COMPLETION_STR}"
+#  fi
 
   # shellcheck source=/dev/null
   \. "$(symenv_install_dir)/symenv.sh"
 
   symenv_reset
-
-  symenv_echo "=> Close and reopen your terminal to start using symenv or run the following to use it now:"
+  symenv_echo "=> Append to profile file then close and reopen your terminal to start using symenv or run the following to use it now:"
   command printf "${SOURCE_STR}"
-  if ${BASH_OR_ZSH} ; then
-    command printf "${COMPLETION_STR}"
-  fi
+  command printf "${SDK_STR}"
+  command printf "${COMPLETION_STR}"
+  symenv_echo
+
+#  symenv_echo "=> Close and reopen your terminal to start using symenv or run the following to use it now:"
+#  command printf "${SOURCE_STR}"
+#  if ${BASH_OR_ZSH} ; then
+#    command printf "${COMPLETION_STR}"
+#  fi
 }
 
 [ "_$SYMENV_ENV" = "_testing" ] || symenv_do_install
