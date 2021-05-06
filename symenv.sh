@@ -596,15 +596,17 @@
         symenv_echo '  symenv --version                               Print out the version of symenv'
         symenv_echo '  symenv current                                 Print out the installed version of the SDK'
         symenv_echo '  symenv config ls                               Print out the configuration used by symenv'
-        symenv_echo '  symenv install [options] <version>                       Download and install a <version> of the SDK'
+        symenv_echo '  symenv install [options] <version>             Download and install a <version> of the SDK'
         symenv_echo '    --registry=<registry>                          When downloading, use this registry'
         symenv_echo '    --force-auth                                   Refresh the user token before downloading'
-        symenv_echo '  symenv use [options] <version>                           Use version <version> of the SDK'
+        symenv_echo '  symenv use [options] <version>                 Use version <version> of the SDK'
         symenv_echo '    --silent                                       No output'
         symenv_echo '  symenv deactivate                              Remove the symlink binding the installed version to current'
         symenv_echo '  symenv ls | list | local                       List the installed versions of the SDK'
-        symenv_echo '  symenv ls-remote | list-remote | remote        List the remote versions of the SDK'
+        symenv_echo '  symenv ls-remote | list-remote | remote        List the available remote versions of the SDK'
         symenv_echo '    --all                                          Include the non-release versions'
+        symenv_echo '  symenv vscode                                  Installs the VSCode extension for SymPL (requires "code" in your path)'
+        symenv_echo '  symenv reset                                   Resets your environment to a fresh install of symenv'
       ;;
       "install" | "i")
         symenv_auth "$@"
