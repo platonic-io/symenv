@@ -117,7 +117,7 @@
 
   symenv_local_versions() {
     if [ -e "${SYMENV_DIR}/versions" ]; then
-      find "${SYMENV_DIR}/versions/" -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 basename
+      find "${SYMENV_DIR}/versions/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;
     else
       symenv_debug "No managed versions/ folder in symenv_dir ${SYMENV_DIR}"
     fi
