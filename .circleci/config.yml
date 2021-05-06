@@ -8,4 +8,3 @@ workflows:
     jobs:
       - shellcheck/check:
           dir: ./
-          exclude: SC2148
