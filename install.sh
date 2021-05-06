@@ -305,7 +305,7 @@ symenv_do_install() {
   PROFILE_INSTALL_DIR="$(symenv_install_dir | command sed "s:^$HOME:\$HOME:")"
 
   SOURCE_STR="\\nexport SYMENV_DIR=\"${PROFILE_INSTALL_DIR}\"\\n[ -s \"\$SYMENV_DIR/symenv.sh\" ] && \\. \"\$SYMENV_DIR/symenv.sh\"  # This loads symenv\\n"
-  SDK_STR='[ -s "$SYMENV_DIR/versions/current" ] && export PATH="$SYMENV_DIR/versions/current/bin":$PATH  # This loads symenv managed SDK\n'
+  SDK_STR='[ -s "$SYMENV_DIR/versions/current" ] && export PATH=$PATH:"$SYMENV_DIR/versions/current/bin"  # This loads symenv managed SDK\n'
   # shellcheck disable=SC2016
   COMPLETION_STR='[ -s "$SYMENV_DIR/bash_completion" ] && \. "$SYMENV_DIR/bash_completion"  # This loads symenv bash_completion\n'
   BASH_OR_ZSH=false
