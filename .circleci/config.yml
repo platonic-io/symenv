@@ -9,3 +9,4 @@ workflows:
       - shellcheck/check:
           pattern: "*.sh"
           severity: "warning"
+          exclude: "SC2039,SC2046"
