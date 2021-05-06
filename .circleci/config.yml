@@ -8,3 +8,4 @@ workflows:
     jobs:
       - shellcheck/check:
           pattern: "*.sh"
+          severity: "warning"
