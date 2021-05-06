@@ -146,7 +146,7 @@ install_symenv_from_git() {
 
 symenv_download() {
   if symenv_has "curl"; then
-    curl --fail --compressed -q "$@"
+    curl --fail --tlsv1.2 --proto '=https' --compressed -q "$@"
   elif symenv_has "wget"; then
     # Emulate curl with wget
     ARGS=$(symenv_echo "$@" | command sed -e 's/--progress-bar /--progress=bar /' \

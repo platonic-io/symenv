@@ -143,7 +143,7 @@
     symenv_debug "Using remote registry ${REGISTRY}"
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
-    PACKAGES_AVAILABLE=$(curl --silent --request GET 'https://'${REGISTRY}'/api/listSDKPackages' \
+    PACKAGES_AVAILABLE=$(curl --silent --tlsv1.2 --proto '=https' --request GET 'https://'${REGISTRY}'/api/listSDKPackages' \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
 
      symenv_debug "Package response: ${PACKAGES_AVAILABLE}"
@@ -306,7 +306,7 @@
 
     symenv_debug "Authenticating to registry ${REGISTRY}"
 
-    CONFIG_RESPONSE=$(curl --silent --request GET \
+    CONFIG_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2 --request GET \
       --url "https://${REGISTRY}/api/config")
     SYMENV_AUTH0_CLIENT_DOMAIN=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_DOMAIN | tr -d \"`
     SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
@@ -317,7 +317,7 @@
 
     local NEXT_WAIT_TIME
     unset SYMENV_ACCESS_TOKEN
-    CODE_REQUEST_RESPONSE=$(curl --silent --request POST \
+    CODE_REQUEST_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2  --request POST \
       --url "https://${SYMENV_AUTH0_CLIENT_DOMAIN}/oauth/device/code" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
@@ -364,7 +364,7 @@
       if symenv_curl_libz_support; then
         CURL_COMPRESSED_FLAG="--compressed"
       fi
-      curl --fail ${CURL_COMPRESSED_FLAG:-} -q "$@"
+      curl --proto '=https' --tlsv1.2 --fail ${CURL_COMPRESSED_FLAG:-} -q "$@"
     elif symenv_has "wget"; then
       # Emulate curl with wget
       ARGS=$(symenv_echo "$@" | command sed -e 's/--progress-bar /--progress=bar /' \
@@ -447,7 +447,7 @@
     fi
     mkdir -p ${TARGET_PATH}
 
-    SIGNED_URL_RESPONSE=$(curl --silent --request GET "https://${REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
+    SIGNED_URL_RESPONSE=$(curl --proto '=https' --tlsv1.2  --silent --request GET "https://${REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
     SIGNED_DOWNLOAD_URL=`echo ${SIGNED_URL_RESPONSE} | jq .signedUrl | tr -d \"`
     symenv_debug "Got signed URL: ${SIGNED_DOWNLOAD_URL}"
@@ -508,6 +508,7 @@
 
   symenv_config() {
     touch "${HOME}/.symenvrc"
+    chmod 0600 "${HOME}/.symenvrc"
     while [ $# -ne 0 ]; do
       case "$1" in
         get)
@@ -550,6 +551,7 @@
     else
       symenv_do_auth $REGISTRY
       touch "${HOME}/.symenvrc"
+      chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
       symenv_echo "✅ Authentication successful"
     fi

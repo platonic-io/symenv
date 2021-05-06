@@ -1,0 +1,11 @@
+version: 2.1
+
+orbs:
+  shellcheck: circleci/shellcheck@2.2.3
+
+workflows:
+  main:
+    jobs:
+      - shellcheck/check:
+          dir: ./
+          exclude: SC2148
