@@ -695,7 +695,10 @@
         symenv_config "$@"
       ;;
       "version" | "-version" |  "--version")
-        symenv_echo "Symbiont Assembly SDK Manager (v0.1.0)"
+        CURRENT=`pwd`
+        cd $SYMENV_DIR
+        TAG=`git describe --long --first-parent`
+        symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
       ;;
       *)
         >&2 symenv --help
