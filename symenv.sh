@@ -354,6 +354,33 @@
     fi
   }
 
+  symenv_curl_libz_support() {
+    curl -V 2>/dev/null | symenv_grep "^Features:" | symenv_grep -q "libz"
+  }
+
+  symenv_download() {
+    local CURL_COMPRESSED_FLAG
+    if symenv_has "curl"; then
+      if symenv_curl_libz_support; then
+        CURL_COMPRESSED_FLAG="--compressed"
+      fi
+      curl --fail ${CURL_COMPRESSED_FLAG:-} -q "$@"
+    elif symenv_has "wget"; then
+      # Emulate curl with wget
+      ARGS=$(symenv_echo "$@" | command sed -e 's/--progress-bar /--progress=bar /' \
+                              -e 's/--compressed //' \
+                              -e 's/--fail //' \
+                              -e 's/-L //' \
+                              -e 's/-I /--server-response /' \
+                              -e 's/-s /-q /' \
+                              -e 's/-sS /-nv /' \
+                              -e 's/-o /-O /' \
+                              -e 's/-C - /-c /')
+      # shellcheck disable=SC2086
+      eval wget $ARGS
+    fi
+  }
+
   symenv_install_from_remote() {
     local FORCE_REINSTALL
     local HAS_ERROR
@@ -377,6 +404,11 @@
       esac
       shift
     done
+
+    if [ -z $PROVIDED_VERSION ]; then
+      symenv_err "A version is required: 'symenv install <version>'"
+      return 44
+    fi
 
     REGISTRY=${SYMENV_REGISTRY}
     CONFIG_REGISTRY=`symenv_config get registry`
@@ -421,7 +453,8 @@
     symenv_debug "Got signed URL: ${SIGNED_DOWNLOAD_URL}"
 
     TARGET_FILE="${TARGET_PATH}/download.tar.gz"
-    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
+#    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
+    symenv_download -L -C - --progress-bar ${SIGNED_DOWNLOAD_URL} -o "${TARGET_FILE}"
     tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}"
     rm ${TARGET_FILE}
 
@@ -641,6 +674,10 @@
       ;;
       "deactivate")
         symenv_deactivate
+      ;;
+      "reset")
+        rm -rf ${SYMENV_DIR}/versions 2>/dev/null
+        rm ${HOME}/.symenvrc 2>/dev/null
       ;;
       "current")
         if symenv_has_managed_sdk; then
