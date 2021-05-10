@@ -7,5 +7,6 @@ workflows:
   main:
     jobs:
       - shellcheck/check:
-          dir: ./
-          exclude: SC2148
+          pattern: "*.sh"
+          severity: "warning"
+          exclude: "SC2039"

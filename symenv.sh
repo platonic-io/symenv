@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
 {
-  symenv_SCRIPT_SOURCE="$_"
   export SYMENV_REGISTRY=iportal.symbiont.io
   export SYMENV_DEBUG=0
 
@@ -125,8 +124,7 @@
 
   symenv_list_local_versions() {
     if [ -e "${SYMENV_DIR}/versions" ]; then
-      # symenv_echo "Available versions:"
-      symenv_echo $(symenv_local_versions) | tr " " "\n"
+      symenv_echo "$(symenv_local_versions | tr " " "\n")"
     else
       symenv_err "No managed versions installed on this system."
     fi
@@ -263,27 +261,6 @@
     fi
   }
 
-  symenv_decode_base64_url() {
-    local len=$((${#1} % 4))
-    local result="$1"
-    if [ $len -eq 2 ]; then result="$1"'=='
-    elif [ $len -eq 3 ]; then result="$1"'='
-    fi
-    symenv_echo "$result" | tr '_-' '/+' | openssl enc -d -base64
-  }
-
-  symenv_decode_jwt(){
-     symenv_decode_base64_url $(echo -n $2 | cut -d "." -f $1) | jq .
-  }
-
-  symenv_validate_token() {
-    TOKEN=${1-}
-    REGISTRY=${2-}
-    # TODO
-    # symenv_echo "$(symenv_decode_jwt 2 ${TOKEN})"
-    # symenv_echo "Validating ${TOKEN}"
-  }
-
   symenv_send_token_request() {
     TOKEN_RESPONSE=$(curl --silent --request POST \
       --url "https://$2/oauth/token" \
@@ -418,7 +395,6 @@
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
-      PACKAGES=$(symenv_fetch_remote_versions ${REGISTRY})
       if jq -e . >/dev/null 2>&1 <<<"$PACKAGES_OF_INTEREST"; then
         symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
       else
@@ -512,8 +488,7 @@
     while [ $# -ne 0 ]; do
       case "$1" in
         get)
-          # symenv config get <key>
-          symenv_echo `symenv_config_get "${HOME}/.symenvrc" "${@:2}"`
+          symenv_echo "$(symenv_config_get "${HOME}/.symenvrc" "${@:2}")"
         ;;
         set)
           symenv_config_set "${HOME}/.symenvrc" "${@:2}"
@@ -690,7 +665,7 @@
           symenv_echo "current -> $TARGET ($VERSION)"
         else
           symenv_echo "Using system version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
-          symenv_echo $(which sym)
+          symenv_echo "$(which sym)"
         fi
       ;;
       "config")
