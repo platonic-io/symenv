@@ -298,7 +298,7 @@
       --url "https://${SYMENV_AUTH0_CLIENT_DOMAIN}/oauth/device/code" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
-      --data scope='read:current_user update:current_user_metadata' \
+      --data scope='read:current_user' \
       --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
 
     symenv_debug "Got authentication challenge:"
