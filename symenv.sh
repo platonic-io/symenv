@@ -521,7 +521,7 @@
     if [[ -e "${HOME}/.symenvrc" && $FORCE_REAUTH -ne 1 ]]; then
       # Check if the token has expired, if so trigger a re-auth
       TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
-      symenv_validate_token ${TOKEN} ${REGISTRY}
+      # symenv_validate_token ${TOKEN} ${REGISTRY}
       export SYMENV_ACCESS_TOKEN=TOKEN
     else
       symenv_do_auth $REGISTRY
