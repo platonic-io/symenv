@@ -313,6 +313,7 @@
     local TOKEN_RESPONSE
     TOKEN_RESPONSE=$(curl --silent --request POST \
       --url "https://$2/oauth/token" \
+      --user-agent "symenv" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data grant_type=urn:ietf:params:oauth:grant-type:device_code \
       --data device_code="$1" \
@@ -329,6 +330,7 @@
     local TOKEN_RESPONSE
     TOKEN_RESPONSE=curl --request POST \
       --url "https://$1/oauth/token" \
+      --user-agent "symenv" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data grant_type=refresh_token \
       --data "client_id=$2" \
@@ -369,6 +371,7 @@
       unset SYMENV_ACCESS_TOKEN
       CODE_REQUEST_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2  --request POST \
         --url "https://${SYMENV_AUTH0_CLIENT_DOMAIN}/oauth/device/code" \
+        --user-agent "symenv" \
         --header 'content-type: application/x-www-form-urlencoded' \
         --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
         --data scope='read:current_user offline_access' \
