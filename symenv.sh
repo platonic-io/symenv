@@ -347,7 +347,6 @@
     REFRESH=0
     if [[ $* == *--refresh* ]] && REFRESH=1
 
-    sleep 3
     REGISTRY=$1
     symenv_debug "Registry passed to do_auth ${REGISTRY}"
     CONFIG_REGISTRY=`symenv_config get registry`
@@ -367,6 +366,7 @@
     if [[ $REFRESH -ne 1 ]]; then
       # Normal authentication flow
       symenv_echo "You will now be authenticated - please use your Symbiont Portal credentials"
+      sleep 3
       local NEXT_WAIT_TIME
       unset SYMENV_ACCESS_TOKEN
       CODE_REQUEST_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2  --request POST \
