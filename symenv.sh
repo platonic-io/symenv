@@ -261,27 +261,98 @@
     fi
   }
 
+  decode_base64_url() {
+    local BASE64_DECODER_PARAM="-d" # option -d for Linux base64 tool
+    echo AAAA | base64 -d > /dev/null 2>&1 || BASE64_DECODER_PARAM="-D" # option -D on MacOS
+    local len=$((${#1} % 4))
+    local result="$1"
+    if [ $len -eq 2 ]; then result="$1"'=='
+    elif [ $len -eq 3 ]; then result="$1"'='
+    fi
+    symenv_echo "$result" | tr '_-' '/+' | base64 $BASE64_DECODER_PARAM
+  }
+
+  decode_jose(){
+    decode_base64_url $(symenv_echo -n $2 | cut -d "." -f $1) | jq .
+  }
+
+  decode_jwt_part(){
+    decode_jose $1 $2 | jq 'if .iat then (.iatStr = (.iat|todate)) else . end | if .exp then (.expStr = (.exp|todate)) else . end | if .nbf then (.nbfStr = (.nbf|todate)) else . end'
+  }
+
+  decode_jwt(){
+     decode_jwt_part 2 $1
+  }
+
+  symenv_validate_token() {
+    local TOKEN
+    local JWT_INFO
+    local AUDIENCE
+    local EXPIRY
+    local IS_VALID
+    TOKEN=${1-}
+
+    if [[ -z $TOKEN ]]; then
+      symenv_echo 0
+    else
+      JWT_INFO=$(decode_jwt $TOKEN)
+      if [[ -z $JWT_INFO ]]; then
+        symenv_echo 0
+      else
+        AUDIENCE=$(symenv_echo $JWT_INFO | jq .iss | tr -d \" | awk -F/ '{print $3}')
+        EXPIRY=$(symenv_echo $JWT_INFO | jq .exp | tr -d \")
+        NOW=$(date +"%s")
+        IS_VALID=0
+        [[ "$NOW" < "$EXPIRY" ]] && IS_VALID=1
+        symenv_echo "${IS_VALID}"
+      fi
+    fi
+  }
+
   symenv_send_token_request() {
+    local TOKEN_RESPONSE
     TOKEN_RESPONSE=$(curl --silent --request POST \
       --url "https://$2/oauth/token" \
+      --user-agent "symenv" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data grant_type=urn:ietf:params:oauth:grant-type:device_code \
       --data device_code="$1" \
       --data "client_id=$3")
     SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
-    symenv_debug "Using token: ${SYMENV_ACCESS_TOKEN}"
+    SYMENV_REFRESH_TOKEN=`echo ${TOKEN_RESPONSE} | jq .refresh_token | tr -d \"`
+    symenv_debug "Using access token: ${SYMENV_ACCESS_TOKEN}, refresh token: ${SYMENV_REFRESH_TOKEN}"
     export SYMENV_ACCESS_TOKEN
+    export SYMENV_REFRESH_TOKEN
+    unset TOKEN_RESPONSE
+  }
+
+  symenv_refresh_access_token() {
+    local TOKEN_RESPONSE
+    TOKEN_RESPONSE=curl --request POST \
+      --url "https://$1/oauth/token" \
+      --user-agent "symenv" \
+      --header 'content-type: application/x-www-form-urlencoded' \
+      --data grant_type=refresh_token \
+      --data "client_id=$2" \
+      --data "refresh_token=$3"
+    SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
+    SYMENV_REFRESH_TOKEN=`echo ${TOKEN_RESPONSE} | jq .refresh_token | tr -d \"`
+    export SYMENV_ACCESS_TOKEN
+    export SYMENV_REFRESH_TOKEN
+    unset TOKEN_RESPONSE
   }
 
   symenv_do_auth() {
-    symenv_echo "You will now be authenticated - please use your Symbiont Portal credentials"
-    sleep 3
+    local REFRESH
+    REFRESH=0
+    if [[ $* == *--refresh* ]] && REFRESH=1
+
     REGISTRY=$1
     symenv_debug "Registry passed to do_auth ${REGISTRY}"
     CONFIG_REGISTRY=`symenv_config get registry`
     [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
 
-    symenv_debug "Authenticating to registry ${REGISTRY}"
+    symenv_debug "Authenticating (refresh: ${REFRESH}) to registry ${REGISTRY}"
 
     CONFIG_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2 --request GET \
       --url "https://${REGISTRY}/api/config")
@@ -292,42 +363,51 @@
     symenv_debug "Got authentication config:"
     symenv_debug "${CONFIG_RESPONSE}"
 
-    local NEXT_WAIT_TIME
-    unset SYMENV_ACCESS_TOKEN
-    CODE_REQUEST_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2  --request POST \
-      --url "https://${SYMENV_AUTH0_CLIENT_DOMAIN}/oauth/device/code" \
-      --header 'content-type: application/x-www-form-urlencoded' \
-      --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
-      --data scope='read:current_user' \
-      --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
+    if [[ $REFRESH -ne 1 ]]; then
+      # Normal authentication flow
+      symenv_echo "You will now be authenticated - please use your Symbiont Portal credentials"
+      sleep 3
+      local NEXT_WAIT_TIME
+      unset SYMENV_ACCESS_TOKEN
+      CODE_REQUEST_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2  --request POST \
+        --url "https://${SYMENV_AUTH0_CLIENT_DOMAIN}/oauth/device/code" \
+        --user-agent "symenv" \
+        --header 'content-type: application/x-www-form-urlencoded' \
+        --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
+        --data scope='read:current_user offline_access' \
+        --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
 
-    symenv_debug "Got authentication challenge:"
-    symenv_debug "${CODE_REQUEST_RESPONSE}"
+      symenv_debug "Got authentication challenge:"
+      symenv_debug "${CODE_REQUEST_RESPONSE}"
 
-    DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
-    USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
-    VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
+      DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
+      USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
+      VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
 
-    symenv_echo "If your browser hasn't automatically opened, please navigate to ${VERIFICATION_URL}"
-    symenv_echo "Authentication proceeding, please validate the user code: ${USER_CODE}"
+      symenv_echo "If your browser hasn't automatically opened, please navigate to ${VERIFICATION_URL}"
+      symenv_echo "Authentication proceeding, please validate the user code: ${USER_CODE}"
 
-    if symenv_has open
-    then
-      open ${VERIFICATION_URL}
-    elif symenv_has xdg-open
-    then
-      xdg-open ${VERIFICATION_URL}
-    fi
-    NEXT_WAIT_TIME=1
-    until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && ! -z ${SYMENV_ACCESS_TOKEN} ]]; do
-      symenv_send_token_request ${DEVICE_CODE} ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_ID}
-      sleep $((NEXT_WAIT_TIME++))
-    done
-    [ ${NEXT_WAIT_TIME} -lt 30 ]
+      if symenv_has open
+      then
+        open ${VERIFICATION_URL}
+      elif symenv_has xdg-open
+      then
+        xdg-open ${VERIFICATION_URL}
+      fi
+      NEXT_WAIT_TIME=1
+      until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && ! -z ${SYMENV_ACCESS_TOKEN} ]]; do
+        symenv_send_token_request ${DEVICE_CODE} ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_ID}
+        sleep $((NEXT_WAIT_TIME++))
+      done
+      [ ${NEXT_WAIT_TIME} -lt 30 ]
 
-    if [[ ${SYMENV_ACCESS_TOKEN} == "null" || -z ${SYMENV_ACCESS_TOKEN} ]]; then
-      symenv_err "🚫 Authentication did not complete in time"
-      return 41
+      if [[ ${SYMENV_ACCESS_TOKEN} == "null" || -z ${SYMENV_ACCESS_TOKEN} ]]; then
+        symenv_err "🚫 Authentication did not complete in time"
+        return 41
+      fi
+    else
+      # Refresh authentication flow
+      symenv_refresh_access_token $SYMENV_AUTH0_CLIENT_DOMAIN $SYMENV_AUTH0_CLIENT_ID $SYMENV_REFRESH_TOKEN
     fi
   }
 
@@ -504,6 +584,7 @@
   symenv_auth() {
     local FORCE_REAUTH
     local REGISTRY_OVERRIDE
+    local IS_VALID
     FORCE_REAUTH=0
     while [ $# -ne 0 ]; do
       case "$1" in
@@ -517,21 +598,36 @@
     done
     REGISTRY=$SYMENV_REGISTRY
     [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
-    # TODO: From local directory, find up
+    # If we have a symenvrc file, check credentials in there
     if [[ -e "${HOME}/.symenvrc" && $FORCE_REAUTH -ne 1 ]]; then
-      # Check if the token has expired, if so trigger a re-auth
-      TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
-      # symenv_validate_token ${TOKEN} ${REGISTRY}
-      export SYMENV_ACCESS_TOKEN=TOKEN
+      # Do we have a SYMENV_ACCESS_TOKEN? Check if the token has expired, if so trigger a re-auth
+      export SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
+      export SYMENV_REFRESH_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _refresh_token)"
+      symenv_debug "Evaluating validity of access token ${SYMENV_ACCESS_TOKEN}"
+      IS_VALID=0
+      IS_VALID=$(symenv_validate_token ${SYMENV_ACCESS_TOKEN})
+      # We don't have a valid SYMENV_ACCESS_TOKEN - get a new one, and refresh the refresh token
+      if [[ ${IS_VALID} == 0 ]]; then
+        if [[ ! -z "${SYMENV_REFRESH_TOKEN}" ]]; then
+          # Our access token is invalid but we have a refresh token, let's refresh
+          symenv_do_auth $REGISTRY --refresh
+        else
+          symenv_auth --registry=$REGISTRY --force-auth
+          export SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
+        fi
+      fi
     else
+      # Otherwise, no file, means we go from scratch
       symenv_do_auth $REGISTRY
       touch "${HOME}/.symenvrc"
       chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
+      symenv_config_set "${HOME}/.symenvrc" _refresh_token ${SYMENV_REFRESH_TOKEN}
       symenv_echo "✅ Authentication successful"
     fi
     unset FORCE_REAUTH
     unset REGISTRY_OVERRIDE
+    unset IS_VALID
   }
 
   symenv() {
