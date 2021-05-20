@@ -235,6 +235,7 @@
       RELEASE_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
       ALL_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]'`
       DEVELOP_PACKAGE_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]'`
+      symenv_debug "Found develop package: ${DEVELOP_PACKAGE_OF_INTEREST}"
       DISPLAY_VERSIONS=`echo ${ALL_PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
         jq '[.[] | "\(.metadata.version)-\(.metadata.kind)"]' | jq --raw-output '.[]'`
       RELEASE_VERSIONS=`echo ${RELEASE_PACKAGES_OF_INTEREST} |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
@@ -287,7 +288,6 @@
   symenv_validate_token() {
     local TOKEN
     local JWT_INFO
-    local AUDIENCE
     local EXPIRY
     local IS_VALID
     TOKEN=${1-}
@@ -299,11 +299,10 @@
       if [[ -z $JWT_INFO ]]; then
         symenv_echo 0
       else
-        AUDIENCE=$(symenv_echo $JWT_INFO | jq .iss | tr -d \" | awk -F/ '{print $3}')
         EXPIRY=$(symenv_echo $JWT_INFO | jq .exp | tr -d \")
         NOW=$(date +"%s")
         IS_VALID=0
-        [[ "$NOW" < "$EXPIRY" ]] && IS_VALID=1
+        [[ "${NOW}" < "${EXPIRY}" ]] && IS_VALID=1
         symenv_echo "${IS_VALID}"
       fi
     fi
