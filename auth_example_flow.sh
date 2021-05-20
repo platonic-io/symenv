@@ -39,6 +39,6 @@ curl --request POST \
   --header 'content-type: application/x-www-form-urlencoded' \
   --data grant_type=refresh_token \
   --data 'client_id=STAayma6q8MaHQ1sTOBMNgOzqiq6nomD' \
-  --data refresh_token="v1.MTQRkMR2WELN3eikGfIwF_ZWrtGom2uroBPuhEnDeCWFPDK0NBveQzKWg2Z6SOBPUSZXaYrr-cLBxFumRO8_VcU"
+  --data refresh_token="${SYMENV_REFRESH_TOKEN}"
 
 # --data 'client_secret=YOUR_CLIENT_SECRET' \
