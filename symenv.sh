@@ -344,7 +344,7 @@
   symenv_do_auth() {
     local REFRESH
     REFRESH=0
-    if [[ $* == *--refresh* ]] && REFRESH=1
+    [[ $* == *--refresh* ]] && REFRESH=1
 
     REGISTRY=$1
     symenv_debug "Registry passed to do_auth ${REGISTRY}"
