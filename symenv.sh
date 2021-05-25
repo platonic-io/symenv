@@ -187,7 +187,7 @@
       symenv_debug "Caching other ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
-    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '.[0] | "develop=\(.name)"'); do
+    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
       symenv_debug "Caching develop ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
@@ -235,7 +235,7 @@
       RELEASE_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
       ALL_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]'`
       DEVELOP_PACKAGE_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]'`
-      symenv_debug "Found develop package: ${DEVELOP_PACKAGE_OF_INTEREST}"
+      symenv_debug "Found develop packages: ${DEVELOP_PACKAGE_OF_INTEREST}"
       DISPLAY_VERSIONS=`echo ${ALL_PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
         jq '[.[] | "\(.metadata.version)-\(.metadata.kind)"]' | jq --raw-output '.[]'`
       RELEASE_VERSIONS=`echo ${RELEASE_PACKAGES_OF_INTEREST} |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
