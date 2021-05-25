@@ -327,13 +327,13 @@
 
   symenv_refresh_access_token() {
     local TOKEN_RESPONSE
-    TOKEN_RESPONSE=curl --request POST \
+    TOKEN_RESPONSE=$(curl --request POST \
       --url "https://$1/oauth/token" \
       --user-agent "symenv" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data grant_type=refresh_token \
       --data "client_id=$2" \
-      --data "refresh_token=$3"
+      --data "refresh_token=$3")
     SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
     SYMENV_REFRESH_TOKEN=`echo ${TOKEN_RESPONSE} | jq .refresh_token | tr -d \"`
     export SYMENV_ACCESS_TOKEN
