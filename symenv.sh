@@ -148,7 +148,7 @@
 
     HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
-      symenv_err "Authentication error"
+      symenv_err "Authentication error - use '--force-auth' to authenticate"
       return 41
     fi
 
@@ -187,6 +187,7 @@
       symenv_debug "Caching other ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
     done
+    BY_UPDATED_DATE=$(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)')
     for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
       symenv_debug "Caching develop ${row}"
       echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
@@ -677,6 +678,7 @@
         symenv_echo '  symenv ls | list | local                       List the installed versions of the SDK'
         symenv_echo '  symenv ls-remote | list-remote | remote        List the available remote versions of the SDK'
         symenv_echo '    --all                                          Include the non-release versions'
+        symenv_echo '    --force-auth                                   Refresh the user token before fetching versions'
         symenv_echo '  symenv vscode                                  Installs the VSCode extension for SymPL (requires "code" in your path)'
         symenv_echo '  symenv reset                                   Resets your environment to a fresh install of symenv'
       ;;
@@ -771,6 +773,7 @@
         cd $SYMENV_DIR
         TAG=`git describe --long --first-parent`
         symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
+        cd $CURRENT
       ;;
       *)
         >&2 symenv --help
