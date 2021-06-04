@@ -328,13 +328,14 @@
 
   symenv_refresh_access_token() {
     local TOKEN_RESPONSE
-    TOKEN_RESPONSE=$(curl --request POST \
+    TOKEN_RESPONSE=$(curl --silent --request POST \
       --url "https://$1/oauth/token" \
       --user-agent "symenv" \
       --header 'content-type: application/x-www-form-urlencoded' \
       --data grant_type=refresh_token \
       --data "client_id=$2" \
       --data "refresh_token=$3")
+    symenv_debug "Got refresh token response ${TOKEN_RESPONSE}"
     SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
     SYMENV_REFRESH_TOKEN=`echo ${TOKEN_RESPONSE} | jq .refresh_token | tr -d \"`
     export SYMENV_ACCESS_TOKEN
@@ -609,8 +610,13 @@
       # We don't have a valid SYMENV_ACCESS_TOKEN - get a new one, and refresh the refresh token
       if [[ ${IS_VALID} == 0 ]]; then
         if [[ ! -z "${SYMENV_REFRESH_TOKEN}" ]]; then
+          symenv_debug "Refreshing tokens using refresh token ${SYMENV_REFRESH_TOKEN}"
           # Our access token is invalid but we have a refresh token, let's refresh
           symenv_do_auth $REGISTRY --refresh
+          symenv_debug "Setting access token ${SYMENV_ACCESS_TOKEN}"
+          symenv_debug "Setting refresh token ${SYMENV_REFRESH_TOKEN}"
+          symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
+          symenv_config_set "${HOME}/.symenvrc" _refresh_token ${SYMENV_REFRESH_TOKEN}
         else
           symenv_auth --registry=$REGISTRY --force-auth
           export SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
