@@ -764,7 +764,11 @@
       "current")
         if symenv_has_managed_sdk; then
           TARGET=$(readlink ${SYMENV_DIR}/versions/current | sed "s|$SYMENV_DIR/versions/||g")
-          VERSION=$(sym --version)
+          if symenv_has "sym"; then
+            VERSION=$(sym --version)
+          else
+            VERSION="sym not found on PATH. Is your PATH set correctly?"
+          fi
           symenv_echo "current -> $TARGET ($VERSION)"
         else
           symenv_echo "Using system version of SDK: $(sym -v 2>/dev/null)$(symenv_print_sdk_version)"
