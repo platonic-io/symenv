@@ -477,7 +477,8 @@
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
-      if jq -e . >/dev/null 2>&1 <<<"$PACKAGES_OF_INTEREST"; then
+      STATUS=$(echo $PACKAGES_OF_INTEREST | jq -e . >/dev/null 2>&1  | echo ${PIPESTATUS[1]})
+      if [[ ${STATUS} -eq 0 ]]; then
         symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
       else
         symenv_err "Failed to parse packages ${PACKAGES_OF_INTEREST}"
