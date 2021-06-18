@@ -16,7 +16,7 @@
   }
 
   symenv_debug() {
-    if [[ ${SYMENV_DEBUG} == 1 ]]; then
+    if [[ "1" = "${SYMENV_DEBUG}" ]]; then
       echo "$*" >> symenv_debug.log
     fi
   }
