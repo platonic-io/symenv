@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 {
   export SYMENV_REGISTRY=iportal.symbiont.io
   export SYMENV_DEBUG=0
