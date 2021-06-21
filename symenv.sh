@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 {
   export SYMENV_REGISTRY=iportal.symbiont.io
   export SYMENV_DEBUG=0
@@ -547,7 +547,7 @@
     if [ -z ${HAS_VALUE} ]; then
       echo "${KEY}=${VALUE}" >> ${FILE}
     else
-      sed -i '' -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
+      sed -i -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
     fi
   }
 
@@ -663,7 +663,7 @@
     COMMAND="${1-}"
     shift
 
-    if [ "$*" = *"--debug"* ]; then
+    if [ "$*" == *"--debug"* ]; then
       export SYMENV_DEBUG=1
       symenv_debug "Using debug output"
     fi
