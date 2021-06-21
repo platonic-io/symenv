@@ -663,8 +663,7 @@
     COMMAND="${1-}"
     shift
 
-    if [ "$*" == *"--debug"* ]; then
-      export SYMENV_DEBUG=1
+    if [ "1" = "${SYMENV_DEBUG}" ]; then
       symenv_debug "Using debug output"
     fi
 
