@@ -16,7 +16,7 @@
   }
 
   symenv_debug() {
-    if [[ "1" = "${SYMENV_DEBUG}" ]]; then
+    if [ "1" = "${SYMENV_DEBUG}" ]; then
       echo "$*" >> symenv_debug.log
     fi
   }
@@ -38,7 +38,7 @@
     type "${1-}" >/dev/null 2>&1
   }
 
-  if ! command -v jq &> /dev/null
+  if ! symenv_has jq
   then
     symenv_err "'jq' could not be found - please make sure it is installed"
     return 101
