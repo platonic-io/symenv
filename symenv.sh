@@ -547,7 +547,7 @@
     if [ -z ${HAS_VALUE} ]; then
       echo "${KEY}=${VALUE}" >> ${FILE}
     else
-      sed -i -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
+      sed -i'' -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
     fi
   }
 
