@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+# bash completion for Symbiont SDK Version Manager (symenv)
+
+if ! command -v symenv &> /dev/null; then
+  return
+fi
+
+__symenv_generate_completion() {
+  declare current_word
+  current_word="${COMP_WORDS[COMP_CWORD]}"
+  # shellcheck disable=SC2207
+  COMPREPLY=($(compgen -W "$1" -- "${current_word}"))
+  return 0
+}
+
+__symenv_commands() {
+  declare current_word
+  declare command
+
+  current_word="${COMP_WORDS[COMP_CWORD]}"
+
+  COMMANDS='
+    help install uninstall use
+    current list ls list-remote ls-remote
+    deactivate version remote reset vscode'
+    case "${current_word}" in
+      -*) __symenv_options ;;
+      *) __symenv_generate_completion "${COMMANDS}" ;;
+    esac
+}
+
+__symenv_options() {
+  OPTIONS=''
+  __symenv_generate_completion "${OPTIONS}"
+}
+
+__symenv_installed_sdks() {
+  __symenv_generate_completion "$(symenv_list_local_versions)"
+}
+
+__symenv_remote_sdks() {
+  __symenv_generate_completion "$(symenv_list_remote_versions)"
+}
+
+__symenv() {
+  declare previous_word
+  previous_word="${COMP_WORDS[COMP_CWORD - 1]}"
+
+  case "${previous_word}" in
+    use | remote | ls | list | uninstall) __symenv_installed_sdks ;;
+    install) __symenv_remote_sdks ;;
+    *) __symenv_commands ;;
+  esac
+
+  return 0
+}
+
+# complete is a bash builtin, but recent versions of ZSH come with a function
+# called bashcompinit that will create a complete in ZSH. If the user is in
+# ZSH, load and run bashcompinit before calling the complete function.
+if [[ -n ${ZSH_VERSION-} ]]; then
+  # First calling compinit (only if not called yet!)
+  # and then bashcompinit as mentioned by zsh man page.
+  if ! command -v compinit > /dev/null; then
+    autoload -U +X compinit && if [[ ${ZSH_DISABLE_COMPFIX-} = true ]]; then
+      compinit -u
+    else
+      compinit
+    fi
+  fi
+  autoload -U +X bashcompinit && bashcompinit
+fi
+
+complete -o default -F __symenv symenv

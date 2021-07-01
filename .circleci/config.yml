@@ -1,0 +1,12 @@
+version: 2.1
+
+orbs:
+  shellcheck: circleci/shellcheck@2.2.3
+
+workflows:
+  main:
+    jobs:
+      - shellcheck/check:
+          pattern: "*.sh"
+          severity: "warning"
+          exclude: "SC2039"
