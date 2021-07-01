@@ -144,7 +144,7 @@
     PACKAGES_AVAILABLE=$(curl --silent --tlsv1.2 --proto '=https' --request GET 'https://'${REGISTRY}'/api/listSDKPackages' \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
 
-     symenv_debug "Package response: ${PACKAGES_AVAILABLE}"
+    symenv_debug "Package response: ${PACKAGES_AVAILABLE}"
 
     HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
@@ -475,6 +475,7 @@
     [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
     symenv_debug "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL}, registry: ${REGISTRY})"
 
+    symenv_fetch_remote_versions $REGISTRY > /dev/null 2>&1
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
       STATUS=$(echo $PACKAGES_OF_INTEREST | jq -e . >/dev/null 2>&1  | echo ${PIPESTATUS[1]})
@@ -638,6 +639,13 @@
     unset IS_VALID
   }
 
+  symenv_append_path()
+  {
+    if ! eval test -z "\"\${$1##*:$2:*}\"" -o -z "\"\${$1%%*:$2}\"" -o -z "\"\${$1##$2:*}\"" -o -z "\"\${$1##$2}\"" ; then
+      eval "$1=\$$1:$2"
+    fi
+  }
+
   symenv() {
     if [ $# -lt 1 ]; then
       symenv --help
@@ -739,6 +747,8 @@
           symenv_echo "Switching managed version to ${PROVIDED_VERSION}"
           rm ${SYMENV_DIR}/versions/current 2>/dev/null
           ln -s ${SYMENV_DIR}/versions/${PROVIDED_VERSION} ${SYMENV_DIR}/versions/current
+          symenv_append_path PATH ${SYMENV_DIR}/versions/current/bin
+          export PATH=$PATH
         else
           symenv_err "Version ${PROVIDED_VERSION} is not installed. Please install it before switching."
           return 127
