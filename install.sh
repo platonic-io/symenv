@@ -27,7 +27,7 @@ symenv_install_dir() {
 }
 
 symenv_latest_version() {
-  symenv_echo "v0.8.1"
+  symenv_echo "v0.8.2"
 }
 
 symenv_profile_is_bash_or_zsh() {
