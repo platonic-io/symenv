@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 {
-  export SYMENV_REGISTRY=iportal.symbiont.io
+  export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
 
   symenv_is_zsh() {
