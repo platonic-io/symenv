@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 {
-  export SYMENV_REGISTRY=iportal.symbiont.io
+  export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
 
   symenv_is_zsh() {
@@ -590,6 +590,15 @@
     done
   }
 
+  symenv_export_registry_from_settings() {
+    local OVERRIDE
+    OVERRIDE="$(symenv_config_get "${HOME}/.symenvrc" registry)"
+    if [ ! -z "$OVERRIDE" ]; then
+      export SYMENV_REGISTRY=$OVERRIDE
+    fi
+    unset OVERRIDE
+  }
+
   symenv_auth() {
     local FORCE_REAUTH
     local REGISTRY_OVERRIDE
@@ -675,6 +684,9 @@
     local COMMAND
     COMMAND="${1-}"
     shift
+
+    # Override our default registry to use whatever the user has set in his `~/.symenvrc` file
+    symenv_export_registry_from_settings
 
     if [ "1" = "${SYMENV_DEBUG}" ]; then
       symenv_debug "Using debug output"
