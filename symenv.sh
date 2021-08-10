@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 {
-  export SYMENV_REGISTRY=iportal.symbiont.io
+  export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
 
   symenv_is_zsh() {
@@ -92,7 +92,9 @@
     if symenv_has_managed_sdk ; then
       if symenv_has code ; then
         EXTENSION_VSIX=`find ${SYMENV_DIR}/versions/current/ide -name "*.vsix"`
-        code --install-extension $EXTENSION_VSIX
+        TMPFILE=`mktemp /tmp/vscode_symenv.XXXXXX` || exit 1
+        code --install-extension $EXTENSION_VSIX > $TMPFILE 2>&1
+        symenv_echo `cat $TMPFILE | grep "vsix" --color=never`
       else
         symenv_err "'code' is not in your PATH. Follow the instructions at \
         https://code.visualstudio.com/docs/editor/extension-marketplace#_command-line-extension-management to \
@@ -370,7 +372,6 @@
     if [[ $REFRESH -ne 1 ]]; then
       # Normal authentication flow
       symenv_echo "You will now be authenticated - please use your Symbiont Portal credentials"
-      sleep 3
       local NEXT_WAIT_TIME
       unset SYMENV_ACCESS_TOKEN
       CODE_REQUEST_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2  --request POST \
@@ -388,8 +389,10 @@
       USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
       VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
 
-      symenv_echo "If your browser hasn't automatically opened, please navigate to ${VERIFICATION_URL}"
-      symenv_echo "Authentication proceeding, please validate the user code: ${USER_CODE}"
+      symenv_echo "If your browser doesn't automatically open, please navigate to ${VERIFICATION_URL}"
+      symenv_echo "Please validate the user code: ${USER_CODE}"
+      symenv_echo "Close the browser tab once a confirmation has appeared."
+      sleep 3
 
       if symenv_has open
       then
@@ -587,6 +590,15 @@
     done
   }
 
+  symenv_export_registry_from_settings() {
+    local OVERRIDE
+    OVERRIDE="$(symenv_config_get "${HOME}/.symenvrc" registry)"
+    if [ ! -z "$OVERRIDE" ]; then
+      export SYMENV_REGISTRY=$OVERRIDE
+    fi
+    unset OVERRIDE
+  }
+
   symenv_auth() {
     local FORCE_REAUTH
     local REGISTRY_OVERRIDE
@@ -673,6 +685,9 @@
     COMMAND="${1-}"
     shift
 
+    # Override our default registry to use whatever the user has set in his `~/.symenvrc` file
+    symenv_export_registry_from_settings
+
     if [ "1" = "${SYMENV_DEBUG}" ]; then
       symenv_debug "Using debug output"
     fi
@@ -680,7 +695,8 @@
     symenv_debug "$COMMAND" "$@"
     case $COMMAND in
       "help" | "--help")
-        symenv_echo "Symbiont Assembly SDK Manager (v0.1.0)"
+        version=$(symenv --version)
+        symenv_echo "$version"
         symenv_echo 'Usage:'
         symenv_echo '  symenv --help                                  Show this message'
         symenv_echo '  symenv --version                               Print out the version of symenv'
