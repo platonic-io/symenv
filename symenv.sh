@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# shellcheck disable=SC2039
+# ^-- Ignore warning about `local`s
+
 {
   export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
@@ -72,10 +75,10 @@
   symenv_install_vscode_extension() {
     if symenv_has_managed_sdk ; then
       if symenv_has code ; then
-        EXTENSION_VSIX=`find ${SYMENV_DIR}/versions/current/ide -name "*.vsix"`
-        TMPFILE=`mktemp /tmp/vscode_symenv.XXXXXX` || exit 1
-        code --install-extension $EXTENSION_VSIX > $TMPFILE 2>&1
-        symenv_echo `cat $TMPFILE | grep "vsix" --color=never`
+        EXTENSION_VSIX=$(find ${SYMENV_DIR}/versions/current/ide -name "*.vsix")
+        TMPFILE=$(mktemp /tmp/vscode_symenv.XXXXXX) || exit 1
+        code --install-extension "$EXTENSION_VSIX" > "$TMPFILE" 2>&1
+        symenv_echo "$(grep "vsix" --color=never < "$TMPFILE")"
       else
         symenv_err "'code' is not in your PATH. Follow the instructions at \
         https://code.visualstudio.com/docs/editor/extension-marketplace#_command-line-extension-management to \
@@ -117,19 +120,19 @@
     local REGISTRY
     REGISTRY_OVERRIDE=$1
     REGISTRY=$SYMENV_REGISTRY
-    CONFIG_REGISTRY=`symenv_config get registry`
-    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
-    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
+    CONFIG_REGISTRY=$(symenv_config get registry)
+    [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+    [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
 
     symenv_debug "Using remote registry ${REGISTRY}"
 
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
-    PACKAGES_AVAILABLE=$(curl --silent --tlsv1.2 --proto '=https' --request GET 'https://'${REGISTRY}'/api/listSDKPackages' \
+    PACKAGES_AVAILABLE=$(curl --silent --tlsv1.2 --proto '=https' --request GET 'https://'"${REGISTRY}"'/api/listSDKPackages' \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
 
     symenv_debug "Package response: ${PACKAGES_AVAILABLE}"
 
-    HAS_ERROR=`echo ${PACKAGES_AVAILABLE} | jq --raw-output .error`
+    HAS_ERROR=$(echo "${PACKAGES_AVAILABLE}" | jq --raw-output .error)
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
       symenv_err "Authentication error - use '--force-auth' to authenticate"
       return 41
@@ -147,12 +150,12 @@
       return 2;
     fi
 
-    PACKAGES_EXTRACT=`echo ${PACKAGES_AVAILABLE} | jq .packages | jq '[.[] | .name]'`
+    PACKAGES_EXTRACT=$(echo "${PACKAGES_AVAILABLE}" | jq .packages | jq '[.[] | .name]')
     symenv_debug "Found packages:"
     symenv_debug "${PACKAGES_EXTRACT}"
 
-    PACKAGES_OF_INTEREST=`echo ${PACKAGES_AVAILABLE} | jq .packages | \
-      jq '[.[] | select(.metadata.os=="'${OS_FILTER}'")]'`
+    PACKAGES_OF_INTEREST=$(echo "${PACKAGES_AVAILABLE}" | jq .packages | \
+      jq '[.[] | select(.metadata.os=="'${OS_FILTER}'")]')
     symenv_debug "Packages of interest: ${PACKAGES_OF_INTEREST}"
 
     local META_FILE
@@ -162,22 +165,22 @@
     fi
     symenv_debug "Caching versions resolution to ${META_FILE}"
     echo "" > $META_FILE
-    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
+    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
       symenv_debug "Caching release ${row}"
-      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
+      echo "${row}" | sed "s/cicd_sdk\///g" >> $META_FILE
     done
-    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
-        key=$(echo ${row} | sed "s/=.*$//")
-        value=$(echo ${row} | sed "s/^.*=//" | sed "s/cicd_sdk\///g")
+    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
+        key=$(echo "${row}" | sed "s/=.*$//")
+        value=$(echo "${row}" | sed "s/^.*=//" | sed "s/cicd_sdk\///g")
         symenv_debug "Caching other ${key} = ${value}"
-        symenv_config_set $META_FILE $key $value
+        symenv_config_set $META_FILE "$key" "$value"
     done
-    BY_UPDATED_DATE=$(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)')
-    for row in $(symenv_echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
+    # BY_UPDATED_DATE=$(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)')
+    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
       symenv_debug "Caching develop ${row}"
-      echo ${row} | sed "s/cicd_sdk\///g" >> $META_FILE
+      echo "${row}" | sed "s/cicd_sdk\///g" >> $META_FILE
     done
-    symenv_echo ${PACKAGES_OF_INTEREST}
+    symenv_echo "${PACKAGES_OF_INTEREST}"
   }
 
   symenv_list_remote_versions() {
@@ -191,7 +194,7 @@
       case "$1" in
         --all) SHOW_ALL=1 ;;
         --registry*)
-          REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
         ;;
       esac
@@ -199,35 +202,36 @@
     done
 
     REGISTRY=${SYMENV_REGISTRY}
-    CONFIG_REGISTRY=`symenv_config get registry`
-    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
-    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
+    CONFIG_REGISTRY=$(symenv_config get registry)
+    [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+    [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
 
-    PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions ${REGISTRY})
-    STATUS=$(echo $PACKAGES_OF_INTEREST | jq -e . >/dev/null 2>&1  | echo ${PIPESTATUS[1]})
+    PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions "${REGISTRY}")
+    # shellcheck disable=SC2216
+    STATUS=$(echo "$PACKAGES_OF_INTEREST" | jq -e . >/dev/null 2>&1  | echo "${PIPESTATUS[1]}")
     if [[ ${STATUS} -eq 0 ]]; then
       symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
     else
       symenv_err "Failed to parse packages ${PACKAGES_OF_INTEREST}"
       return 44
     fi
-    LENGTH=`echo ${PACKAGES_OF_INTEREST} | jq length`
+    LENGTH=$(echo "${PACKAGES_OF_INTEREST}" | jq length)
     symenv_debug "${LENGTH} packages found"
     if [ ${SHOW_ALL} -ne 1 ]; then
       symenv_debug "Filtering out to releases only"
-      PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
-      DISPLAY_VERSIONS=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
+      PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
+      DISPLAY_VERSIONS=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
       symenv_echo "${DISPLAY_VERSIONS}"
     else
       symenv_debug "Filtering out to all packages"
-      RELEASE_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]'`
-      ALL_PACKAGES_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]'`
-      DEVELOP_PACKAGE_OF_INTEREST=`echo ${PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]'`
+      RELEASE_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
+      ALL_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]')
+      DEVELOP_PACKAGE_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]')
       symenv_debug "Found develop packages: ${DEVELOP_PACKAGE_OF_INTEREST}"
-      DISPLAY_VERSIONS=`echo ${ALL_PACKAGES_OF_INTEREST} | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
-        jq '[.[] | "\(.metadata.version)-\(.metadata.kind)"] | unique' | jq --raw-output '.[]'`
-      RELEASE_VERSIONS=`echo ${RELEASE_PACKAGES_OF_INTEREST} |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]'`
-      DEVELOP_VERSION=`echo ${DEVELOP_PACKAGE_OF_INTEREST} | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'`
+      DISPLAY_VERSIONS=$(echo "${ALL_PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
+        jq '[.[] | "\(.metadata.version)-\(.metadata.kind)"] | unique' | jq --raw-output '.[]')
+      RELEASE_VERSIONS=$(echo "${RELEASE_PACKAGES_OF_INTEREST}" |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
+      DEVELOP_VERSION=$(echo "${DEVELOP_PACKAGE_OF_INTEREST}" | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]')
       #  | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'
       if [ -n "$RELEASE_VERSIONS" ]; then
         symenv_echo "${RELEASE_VERSIONS}"
@@ -262,15 +266,15 @@
   }
 
   decode_jose(){
-    decode_base64_url $(symenv_echo -n $2 | cut -d "." -f $1) | jq .
+    decode_base64_url "$(symenv_echo -n "$2" | cut -d "." -f "$1")" | jq .
   }
 
   decode_jwt_part(){
-    decode_jose $1 $2 | jq 'if .iat then (.iatStr = (.iat|todate)) else . end | if .exp then (.expStr = (.exp|todate)) else . end | if .nbf then (.nbfStr = (.nbf|todate)) else . end'
+    decode_jose "$1" "$2" | jq 'if .iat then (.iatStr = (.iat|todate)) else . end | if .exp then (.expStr = (.exp|todate)) else . end | if .nbf then (.nbfStr = (.nbf|todate)) else . end'
   }
 
   decode_jwt(){
-     decode_jwt_part 2 $1
+     decode_jwt_part 2 "$1"
   }
 
   symenv_validate_token() {
@@ -283,11 +287,11 @@
     if [[ -z $TOKEN ]]; then
       symenv_echo 0
     else
-      JWT_INFO=$(decode_jwt $TOKEN)
+      JWT_INFO=$(decode_jwt "$TOKEN")
       if [[ -z $JWT_INFO ]]; then
         symenv_echo 0
       else
-        EXPIRY=$(symenv_echo $JWT_INFO | jq .exp | tr -d \")
+        EXPIRY=$(symenv_echo "$JWT_INFO" | jq .exp | tr -d \")
         NOW=$(date +"%s")
         IS_VALID=0
         [[ "${NOW}" < "${EXPIRY}" ]] && IS_VALID=1
@@ -305,8 +309,8 @@
       --data grant_type=urn:ietf:params:oauth:grant-type:device_code \
       --data device_code="$1" \
       --data "client_id=$3")
-    SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
-    SYMENV_REFRESH_TOKEN=`echo ${TOKEN_RESPONSE} | jq .refresh_token | tr -d \"`
+    SYMENV_ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq .access_token | tr -d \")
+    SYMENV_REFRESH_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq .refresh_token | tr -d \")
     symenv_debug "Using access token: ${SYMENV_ACCESS_TOKEN}, refresh token: ${SYMENV_REFRESH_TOKEN}"
     export SYMENV_ACCESS_TOKEN
     export SYMENV_REFRESH_TOKEN
@@ -323,8 +327,8 @@
       --data "client_id=$2" \
       --data "refresh_token=$3")
     symenv_debug "Got refresh token response ${TOKEN_RESPONSE}"
-    SYMENV_ACCESS_TOKEN=`echo ${TOKEN_RESPONSE} | jq .access_token | tr -d \"`
-    SYMENV_REFRESH_TOKEN=`echo ${TOKEN_RESPONSE} | jq .refresh_token | tr -d \"`
+    SYMENV_ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq .access_token | tr -d \")
+    SYMENV_REFRESH_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq .refresh_token | tr -d \")
     export SYMENV_ACCESS_TOKEN
     export SYMENV_REFRESH_TOKEN
     unset TOKEN_RESPONSE
@@ -337,16 +341,16 @@
 
     REGISTRY=$1
     symenv_debug "Registry passed to do_auth ${REGISTRY}"
-    CONFIG_REGISTRY=`symenv_config get registry`
-    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+    CONFIG_REGISTRY=$(symenv_config get registry)
+    [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
 
     symenv_debug "Authenticating (refresh: ${REFRESH}) to registry ${REGISTRY}"
 
     CONFIG_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2 --request GET \
       --url "https://${REGISTRY}/api/config")
-    SYMENV_AUTH0_CLIENT_DOMAIN=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_DOMAIN | tr -d \"`
-    SYMENV_AUTH0_CLIENT_AUDIENCE=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLIENT_AUDIENCE | tr -d \"`
-    SYMENV_AUTH0_CLIENT_ID=`echo ${CONFIG_RESPONSE} | jq .AUTH0_CLI_CLIENT_ID | tr -d \"`
+    SYMENV_AUTH0_CLIENT_DOMAIN=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLIENT_DOMAIN | tr -d \")
+    SYMENV_AUTH0_CLIENT_AUDIENCE=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLIENT_AUDIENCE | tr -d \")
+    SYMENV_AUTH0_CLIENT_ID=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLI_CLIENT_ID | tr -d \")
 
     symenv_debug "Got authentication config:"
     symenv_debug "${CONFIG_RESPONSE}"
@@ -362,14 +366,14 @@
         --header 'content-type: application/x-www-form-urlencoded' \
         --data "client_id=${SYMENV_AUTH0_CLIENT_ID}" \
         --data scope='read:current_user offline_access' \
-        --data audience=${SYMENV_AUTH0_CLIENT_AUDIENCE})
+        --data audience="${SYMENV_AUTH0_CLIENT_AUDIENCE}")
 
       symenv_debug "Got authentication challenge:"
       symenv_debug "${CODE_REQUEST_RESPONSE}"
 
-      DEVICE_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .device_code | tr -d \"`
-      USER_CODE=`echo ${CODE_REQUEST_RESPONSE} | jq .user_code | tr -d \"`
-      VERIFICATION_URL=`echo ${CODE_REQUEST_RESPONSE} | jq .verification_uri_complete | tr -d \"`
+      DEVICE_CODE=$(echo "${CODE_REQUEST_RESPONSE}" | jq .device_code | tr -d \")
+      USER_CODE=$(echo "${CODE_REQUEST_RESPONSE}" | jq .user_code | tr -d \")
+      VERIFICATION_URL=$(echo "${CODE_REQUEST_RESPONSE}" | jq .verification_uri_complete | tr -d \")
 
       symenv_echo "If your browser doesn't automatically open, please navigate to ${VERIFICATION_URL}"
       symenv_echo "Please validate the user code: ${USER_CODE}"
@@ -378,17 +382,17 @@
 
       if symenv_has open
       then
-        open ${VERIFICATION_URL}
+        open "${VERIFICATION_URL}"
       elif symenv_has xdg-open
       then
-        xdg-open ${VERIFICATION_URL}
+        xdg-open "${VERIFICATION_URL}"
       fi
       NEXT_WAIT_TIME=1
-      until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && ! -z ${SYMENV_ACCESS_TOKEN} ]]; do
-        symenv_send_token_request ${DEVICE_CODE} ${SYMENV_AUTH0_CLIENT_DOMAIN} ${SYMENV_AUTH0_CLIENT_ID}
+      until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && -n ${SYMENV_ACCESS_TOKEN} ]]; do
+        symenv_send_token_request "${DEVICE_CODE}" "${SYMENV_AUTH0_CLIENT_DOMAIN}" "${SYMENV_AUTH0_CLIENT_ID}"
         sleep $((NEXT_WAIT_TIME++))
       done
-      [ ${NEXT_WAIT_TIME} -lt 30 ]
+      [ "${NEXT_WAIT_TIME}" -lt 30 ]
 
       if [[ ${SYMENV_ACCESS_TOKEN} == "null" || -z ${SYMENV_ACCESS_TOKEN} ]]; then
         symenv_err "🚫 Authentication did not complete in time"
@@ -396,7 +400,7 @@
       fi
     else
       # Refresh authentication flow
-      symenv_refresh_access_token $SYMENV_AUTH0_CLIENT_DOMAIN $SYMENV_AUTH0_CLIENT_ID $SYMENV_REFRESH_TOKEN
+      symenv_refresh_access_token "$SYMENV_AUTH0_CLIENT_DOMAIN" "$SYMENV_AUTH0_CLIENT_ID" "$SYMENV_REFRESH_TOKEN"
     fi
   }
 
@@ -439,7 +443,7 @@
     while [ $# -ne 0 ]; do
       case "$1" in
         --registry*)
-          REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
           ;;
         --force) FORCE_REINSTALL=1 ;;
@@ -452,21 +456,22 @@
       shift
     done
 
-    if [ -z $PROVIDED_VERSION ]; then
+    if [ -z "$PROVIDED_VERSION" ]; then
       symenv_err "A version is required: 'symenv install <version>'"
       return 44
     fi
 
     REGISTRY=${SYMENV_REGISTRY}
-    CONFIG_REGISTRY=`symenv_config get registry`
-    [ ! -z "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
-    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
+    CONFIG_REGISTRY=$(symenv_config get registry)
+    [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
+    [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
     symenv_debug "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL}, registry: ${REGISTRY})"
 
-    symenv_fetch_remote_versions $REGISTRY > /dev/null 2>&1
+    symenv_fetch_remote_versions "$REGISTRY" > /dev/null 2>&1
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
-      STATUS=$(echo $PACKAGES_OF_INTEREST | jq -e . >/dev/null 2>&1  | echo ${PIPESTATUS[1]})
+      # shellcheck disable=SC2216
+      STATUS=$(echo "$PACKAGES_OF_INTEREST" | jq -e . >/dev/null 2>&1  | echo "${PIPESTATUS[1]}")
       if [[ ${STATUS} -eq 0 ]]; then
         symenv_debug "Sucessfully pulled packages ${PACKAGES_OF_INTEREST}"
       else
@@ -474,7 +479,7 @@
         return 44
       fi
     fi
-    MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta ${PROVIDED_VERSION})"
+    MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta "${PROVIDED_VERSION}")"
     symenv_debug "Mapped version ${PROVIDED_VERSION} to package ${MAPPED_VERSION}"
 
     if [ -z "$MAPPED_VERSION" ]; then
@@ -491,25 +496,25 @@
       return 0
     fi
     if [[ -e ${TARGET_PATH} ]]; then
-      rm -rf ${TARGET_PATH}
+      rm -rf "${TARGET_PATH}"
     fi
-    mkdir -p ${TARGET_PATH}
+    mkdir -p "${TARGET_PATH}"
 
     SIGNED_URL_RESPONSE=$(curl --proto '=https' --tlsv1.2  --silent --request GET "https://${REGISTRY}/api/getSDKPackage?package=${MAPPED_VERSION}" \
       --header "Authorization: Bearer ${SYMENV_ACCESS_TOKEN}")
-    SIGNED_DOWNLOAD_URL=`echo ${SIGNED_URL_RESPONSE} | jq .signedUrl | tr -d \"`
+    SIGNED_DOWNLOAD_URL=$(echo "${SIGNED_URL_RESPONSE}" | jq .signedUrl | tr -d \")
     symenv_debug "Got signed URL: ${SIGNED_DOWNLOAD_URL}"
 
     TARGET_FILE="${TARGET_PATH}/download.tar.gz"
 #    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
-    symenv_download -L -C - --progress-bar ${SIGNED_DOWNLOAD_URL} -o "${TARGET_FILE}"
+    symenv_download -L -C - --progress-bar "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
     tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}"
-    rm ${TARGET_FILE}
+    rm "${TARGET_FILE}"
 
-    CONTAINING_FOLDER=`find ${TARGET_PATH} -mindepth 2 -maxdepth 2 -type d`
-    mv "${CONTAINING_FOLDER}"/* ${TARGET_PATH}
-    FOLDER_TO_REMOVE=`dirname ${CONTAINING_FOLDER}`
-    rm -r $FOLDER_TO_REMOVE
+    CONTAINING_FOLDER=$(find "${TARGET_PATH}" -mindepth 2 -maxdepth 2 -type d)
+    mv "${CONTAINING_FOLDER}"/* "${TARGET_PATH}"
+    FOLDER_TO_REMOVE=$(dirname "${CONTAINING_FOLDER}")
+    rm -r "$FOLDER_TO_REMOVE"
 
     if [[ -e "${SYMENV_DIR}/versions/current" ]]; then
       rm "${SYMENV_DIR}/versions/current"
@@ -531,12 +536,12 @@
     fi
     VALUE=${3-}
     symenv_debug "Setting config key ${KEY} to ${VALUE}"
-    HAS_VALUE=`grep -R "^[#]*\s*${KEY}=.*" ${FILE}`
+    HAS_VALUE=$(grep -R "^[#]*\s*${KEY}=.*" "${FILE}")
     symenv_debug "Value existing: ${HAS_VALUE}"
-    if [ -z ${HAS_VALUE} ]; then
-      echo "${KEY}=${VALUE}" >> ${FILE}
+    if [ -z "${HAS_VALUE}" ]; then
+      echo "${KEY}=${VALUE}" >> "${FILE}"
     else
-      sed -i'' -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" ${FILE}
+      sed -i'' -E "s/^[#]*\s*${KEY}=.*/${KEY}=${VALUE}/" "${FILE}"
     fi
   }
 
@@ -551,7 +556,7 @@
     if [[ "" == "${KEY}" ]]; then
       symenv_err "Attempting to get undefined field"
     fi
-    symenv_echo "$(sed -En "s/^${KEY}=(.*)$/\1/p" ${FILE})"
+    symenv_echo "$(sed -En "s/^${KEY}=(.*)$/\1/p" "${FILE}")"
   }
 
   symenv_config() {
@@ -576,7 +581,7 @@
   symenv_export_registry_from_settings() {
     local OVERRIDE
     OVERRIDE="$(symenv_config_get "${HOME}/.symenvrc" registry)"
-    if [ ! -z "$OVERRIDE" ]; then
+    if [ -n "$OVERRIDE" ]; then
       export SYMENV_REGISTRY=$OVERRIDE
     fi
     unset OVERRIDE
@@ -591,7 +596,7 @@
       case "$1" in
         --force-auth) FORCE_REAUTH=1 ;;
         --registry*)
-          REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
           symenv_debug "Using auth registry override: $REGISTRY_OVERRIDE"
         ;;
@@ -599,39 +604,41 @@
       shift
     done
     REGISTRY=$SYMENV_REGISTRY
-    [ ! -z "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
+    [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
     # If we have a symenvrc file, check credentials in there
     if [[ -e "${HOME}/.symenvrc" && $FORCE_REAUTH -ne 1 ]]; then
       # Do we have a SYMENV_ACCESS_TOKEN? Check if the token has expired, if so trigger a re-auth
-      export SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
-      export SYMENV_REFRESH_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _refresh_token)"
+      SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
+      SYMENV_REFRESH_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _refresh_token)"
+      export SYMENV_REFRESH_TOKEN
       symenv_debug "Evaluating validity of access token ${SYMENV_ACCESS_TOKEN}"
       IS_VALID=0
-      IS_VALID=$(symenv_validate_token ${SYMENV_ACCESS_TOKEN})
+      IS_VALID=$(symenv_validate_token "${SYMENV_ACCESS_TOKEN}")
       # We don't have a valid SYMENV_ACCESS_TOKEN - get a new one, and refresh the refresh token
       if [[ ${IS_VALID} == 0 ]]; then
-        if [[ ! -z "${SYMENV_REFRESH_TOKEN}" ]]; then
+        if [[ -n "${SYMENV_REFRESH_TOKEN}" ]]; then
           symenv_debug "Refreshing tokens using refresh token ${SYMENV_REFRESH_TOKEN}"
           # Our access token is invalid but we have a refresh token, let's refresh
-          symenv_do_auth $REGISTRY --refresh
+          symenv_do_auth "$REGISTRY" --refresh
           symenv_debug "Setting access token ${SYMENV_ACCESS_TOKEN}"
           symenv_debug "Setting refresh token ${SYMENV_REFRESH_TOKEN}"
-          symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
-          symenv_config_set "${HOME}/.symenvrc" _refresh_token ${SYMENV_REFRESH_TOKEN}
+          symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
+          symenv_config_set "${HOME}/.symenvrc" _refresh_token "${SYMENV_REFRESH_TOKEN}"
         else
-          symenv_auth --registry=$REGISTRY --force-auth
-          export SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
+          symenv_auth --registry="$REGISTRY" --force-auth
+          SYMENV_ACCESS_TOKEN="$(symenv_config_get "${HOME}/.symenvrc" _auth_token)"
         fi
       fi
     else
       # Otherwise, no file, means we go from scratch
-      symenv_do_auth $REGISTRY
+      symenv_do_auth "$REGISTRY"
       touch "${HOME}/.symenvrc"
       chmod 0600 "${HOME}/.symenvrc"
-      symenv_config_set "${HOME}/.symenvrc" _auth_token ${SYMENV_ACCESS_TOKEN}
-      symenv_config_set "${HOME}/.symenvrc" _refresh_token ${SYMENV_REFRESH_TOKEN}
+      symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
+      symenv_config_set "${HOME}/.symenvrc" _refresh_token "${SYMENV_REFRESH_TOKEN}"
       symenv_echo "✅ Authentication successful"
     fi
+    export SYMENV_ACCESS_TOKEN
     unset FORCE_REAUTH
     unset REGISTRY_OVERRIDE
     unset IS_VALID
@@ -747,10 +754,10 @@
         fi
 
         # Check if the version is installed
-        if symenv_has_managed_sdk ${PROVIDED_VERSION}; then
+        if symenv_has_managed_sdk "${PROVIDED_VERSION}"; then
           symenv_echo "Switching managed version to ${PROVIDED_VERSION}"
           rm ${SYMENV_DIR}/versions/current 2>/dev/null
-          ln -s ${SYMENV_DIR}/versions/${PROVIDED_VERSION} ${SYMENV_DIR}/versions/current
+          ln -s ${SYMENV_DIR}/versions/"${PROVIDED_VERSION}" ${SYMENV_DIR}/versions/current
           symenv_append_path PATH ${SYMENV_DIR}/versions/current/bin
           export PATH=$PATH
         else
@@ -774,7 +781,7 @@
       ;;
       "reset")
         rm -rf ${SYMENV_DIR}/versions 2>/dev/null
-        rm ${HOME}/.symenvrc 2>/dev/null
+        rm "${HOME}"/.symenvrc 2>/dev/null
       ;;
       "current")
         if symenv_has_managed_sdk; then
@@ -794,11 +801,11 @@
         symenv_config "$@"
       ;;
       "version" | "-version" |  "--version")
-        CURRENT=`pwd`
+        CURRENT=$(pwd)
         cd $SYMENV_DIR
-        TAG=`git describe --long --first-parent`
+        TAG=$(git describe --long --first-parent)
         symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
-        cd $CURRENT
+        cd "$CURRENT"
       ;;
       *)
         >&2 symenv --help
