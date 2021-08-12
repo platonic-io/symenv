@@ -255,6 +255,7 @@ symenv_reset() {
 }
 
 symenv_do_install() {
+  touch "${HOME}/.symenvrc"
   if [ -n "${SYMENV_DIR-}" ] && ! [ -d "${SYMENV_DIR}" ]; then
     if [ -e "${SYMENV_DIR}" ]; then
       symenv_echo >&2 "File \"${SYMENV_DIR}\" has the same name as installation directory."
