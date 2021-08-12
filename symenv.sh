@@ -15,13 +15,37 @@
     [ -t 1 ]
   }
 
+  symenv_status () {
+      if [ "$2" = "info" ] ; then
+          COLOR="96m";
+          SIGN="ⓘ "
+      elif [ "$2" = "success" ] ; then
+          COLOR="92m";
+          SIGN="✅"
+      elif [ "$2" = "warning" ] ; then
+          COLOR="93m";
+          SIGN="⚠"
+      elif [ "$2" = "error" ] ; then
+          COLOR="91m";
+          SIGN="❌"
+      else
+          COLOR="0m";
+      fi
+      STARTCOLOR="\e[$COLOR";
+      ENDCOLOR="\e[0m";
+      printf "$STARTCOLOR%b$ENDCOLOR\n" "$SIGN $1";
+  }
+
   symenv_echo() {
     command printf %s\\n "$*" 2>/dev/null
   }
 
   symenv_debug() {
+    if [ "stdout" = "${SYMENV_DEBUG}" ]; then
+        echo "$*"
+    fi
     if [ "1" = "${SYMENV_DEBUG}" ]; then
-      echo "$*" >> symenv_debug.log
+        echo "$*" >> symenv_debug.log
     fi
   }
 
@@ -29,9 +53,19 @@
     \cd "$@"
   }
 
+  symenv_success() {
+      symenv_debug "$@"
+      >&2 symenv_status "$@" "success"
+  }
+
+  symenv_info() {
+      symenv_debug "$@"
+      >&2 symenv_status "$@" "info"
+  }
+
   symenv_err() {
     symenv_debug "$@"
-    >&2 symenv_echo "$@"
+    >&2 symenv_status "$@" "error"
   }
 
   symenv_grep() {
@@ -347,7 +381,15 @@
     symenv_debug "Authenticating (refresh: ${REFRESH}) to registry ${REGISTRY}"
 
     CONFIG_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2 --request GET \
-      --url "https://${REGISTRY}/api/config")
+                           --url "https://${REGISTRY}/api/config")
+
+    if ! echo $CONFIG_RESPONSE | jq -e . >/dev/null 2>&1 ; then
+        symenv_err "Unable to retrieve configuration from registry $REGISTRY"
+        symenv_info "You can use a different registry using the --registry flag."
+        SYMENV_ACCESS_TOKEN=""
+        return 1
+    fi
+
     SYMENV_AUTH0_CLIENT_DOMAIN=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLIENT_DOMAIN | tr -d \")
     SYMENV_AUTH0_CLIENT_AUDIENCE=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLIENT_AUDIENCE | tr -d \")
     SYMENV_AUTH0_CLIENT_ID=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLI_CLIENT_ID | tr -d \")
@@ -582,6 +624,7 @@
     local OVERRIDE
     OVERRIDE="$(symenv_config_get "${HOME}/.symenvrc" registry)"
     if [ -n "$OVERRIDE" ]; then
+      symenv_debug "Using custom registry from .symenvrc: ${OVERRIDE}"
       export SYMENV_REGISTRY=$OVERRIDE
     fi
     unset OVERRIDE
@@ -598,7 +641,7 @@
         --registry*)
           REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
-          symenv_debug "Using auth registry override: $REGISTRY_OVERRIDE"
+          symenv_debug "Using command-line auth registry override: $REGISTRY_OVERRIDE"
         ;;
       esac
       shift
@@ -620,6 +663,7 @@
           symenv_debug "Refreshing tokens using refresh token ${SYMENV_REFRESH_TOKEN}"
           # Our access token is invalid but we have a refresh token, let's refresh
           symenv_do_auth "$REGISTRY" --refresh
+          [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
           symenv_debug "Setting access token ${SYMENV_ACCESS_TOKEN}"
           symenv_debug "Setting refresh token ${SYMENV_REFRESH_TOKEN}"
           symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
@@ -636,7 +680,7 @@
       chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
       symenv_config_set "${HOME}/.symenvrc" _refresh_token "${SYMENV_REFRESH_TOKEN}"
-      symenv_echo "✅ Authentication successful"
+      symenv_success "Authentication successful"
     fi
     export SYMENV_ACCESS_TOKEN
     unset FORCE_REAUTH
@@ -710,6 +754,7 @@
       ;;
       "install" | "i")
         symenv_auth "$@"
+        [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
         symenv_install_from_remote "$@"
       ;;
       "use" | "activate")
@@ -771,6 +816,7 @@
       ;;
       "remote" | "ls-remote" | "list-remote")
         symenv_auth "$@"
+        [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
         symenv_list_remote_versions "$@"
       ;;
       "list" | "ls" | "local")
