@@ -2,6 +2,7 @@
 {
   export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
+  export SYMENV_DIR=$HOME/.symbiont
 
   symenv_is_zsh() {
     [ -n "${ZSH_VERSION-}" ]
@@ -53,28 +54,8 @@
     SYMENV_CD_FLAGS="-q"
   fi
 
-  # Auto detect the SYMENV_DIR when not set
-  if [ -z "${SYMENV_DIR-}" ]; then
-    # shellcheck disable=SC2128
-    if [ -n "${BASH_SOURCE-}" ]; then
-      # shellcheck disable=SC2169
-      SYMENV_SCRIPT_SOURCE="${BASH_SOURCE[0]}"
-    fi
-#    SYMENV_DIR="$(symenv_cd ${SYMENV_CD_FLAGS} "$(dirname "${SYMENV_SCRIPT_SOURCE:-$0}")" >/dev/null && \pwd)"
-    SYMENV_DIR=~/.symbiont
-    export SYMENV_DIR
-  else
-    # https://unix.stackexchange.com/a/198289
-    case $SYMENV_DIR in
-      *[!/]*/)
-        SYMENV_DIR="${SYMENV_DIR%"${SYMENV_DIR##*[!/]}"}"
-        export SYMENV_DIR
-        symenv_err "Warning: \$SYMENV_DIR should not have trailing slashes"
-      ;;
-    esac
-  fi
   unset SYMENV_SCRIPT_SOURCE 2>/dev/null
-  mkdir -p ${SYMENV_DIR}/versions
+  mkdir -p "${SYMENV_DIR}/versions"
 
   symenv_print_sdk_version() {
     if symenv_has "sym"; then
@@ -120,7 +101,7 @@
     if [ -e "${SYMENV_DIR}/versions" ]; then
       find "${SYMENV_DIR}/versions/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;
     else
-      symenv_debug "No managed versions/ folder in symenv_dir ${SYMENV_DIR}"
+      symenv_debug "No managed versions/ folder in ${SYMENV_DIR}"
     fi
   }
 
