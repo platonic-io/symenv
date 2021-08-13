@@ -15,13 +15,35 @@
     [ -t 1 ]
   }
 
+  symenv_status () {
+      if [ "$2" = "info" ] ; then
+          COLOR="96m";
+          SIGN="ⓘ "
+      elif [ "$2" = "success" ] ; then
+          COLOR="92m";
+          SIGN="✅"
+      elif [ "$2" = "warning" ] ; then
+          COLOR="93m";
+          SIGN="⚠"
+      elif [ "$2" = "error" ] ; then
+          COLOR="91m";
+          SIGN="❌"
+      else
+          COLOR="0m";
+      fi
+      STARTCOLOR="\e[$COLOR";
+      ENDCOLOR="\e[0m";
+      printf "$STARTCOLOR%b$ENDCOLOR\n" "$SIGN $1";
+  }
+
   symenv_echo() {
     command printf %s\\n "$*" 2>/dev/null
   }
 
   symenv_debug() {
     if [ "1" = "${SYMENV_DEBUG}" ]; then
-      echo "$*" >> symenv_debug.log
+        >&2 echo "$*"
+        echo "$*" >> symenv_debug.log
     fi
   }
 
@@ -29,9 +51,19 @@
     \cd "$@"
   }
 
+  symenv_success() {
+      symenv_debug "$@"
+      >&2 symenv_status "$@" "success"
+  }
+
+  symenv_info() {
+      symenv_debug "$@"
+      >&2 symenv_status "$@" "info"
+  }
+
   symenv_err() {
     symenv_debug "$@"
-    >&2 symenv_echo "$@"
+    >&2 symenv_status "$@" "error"
   }
 
   symenv_grep() {
@@ -75,7 +107,7 @@
   symenv_install_vscode_extension() {
     if symenv_has_managed_sdk ; then
       if symenv_has code ; then
-        EXTENSION_VSIX=$(find ${SYMENV_DIR}/versions/current/ide -name "*.vsix")
+        EXTENSION_VSIX=$(find "${SYMENV_DIR}"/versions/current/ide -name "*.vsix")
         TMPFILE=$(mktemp /tmp/vscode_symenv.XXXXXX) || exit 1
         code --install-extension "$EXTENSION_VSIX" > "$TMPFILE" 2>&1
         symenv_echo "$(grep "vsix" --color=never < "$TMPFILE")"
@@ -164,21 +196,21 @@
       mkdir -p "${SYMENV_DIR}/versions"
     fi
     symenv_debug "Caching versions resolution to ${META_FILE}"
-    echo "" > $META_FILE
+    echo "" > "$META_FILE"
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
       symenv_debug "Caching release ${row}"
-      echo "${row}" | sed "s/cicd_sdk\///g" >> $META_FILE
+      echo "${row}" | sed "s/cicd_sdk\///g" >> "$META_FILE"
     done
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
         key=$(echo "${row}" | sed "s/=.*$//")
         value=$(echo "${row}" | sed "s/^.*=//" | sed "s/cicd_sdk\///g")
         symenv_debug "Caching other ${key} = ${value}"
-        symenv_config_set $META_FILE "$key" "$value"
+        symenv_config_set "$META_FILE" "$key" "$value"
     done
     # BY_UPDATED_DATE=$(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)')
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
       symenv_debug "Caching develop ${row}"
-      echo "${row}" | sed "s/cicd_sdk\///g" >> $META_FILE
+      echo "${row}" | sed "s/cicd_sdk\///g" >> "$META_FILE"
     done
     symenv_echo "${PACKAGES_OF_INTEREST}"
   }
@@ -193,6 +225,7 @@
     while [ $# -ne 0 ]; do
       case "$1" in
         --all) SHOW_ALL=1 ;;
+        --debug);;
         --registry*)
           REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
@@ -347,7 +380,15 @@
     symenv_debug "Authenticating (refresh: ${REFRESH}) to registry ${REGISTRY}"
 
     CONFIG_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2 --request GET \
-      --url "https://${REGISTRY}/api/config")
+                           --url "https://${REGISTRY}/api/config")
+
+    if ! echo "$CONFIG_RESPONSE" | jq -e . >/dev/null 2>&1 ; then
+        symenv_err "Unable to retrieve configuration from registry $REGISTRY"
+        symenv_info "You can use a different registry using the --registry flag."
+        SYMENV_ACCESS_TOKEN=""
+        return 1
+    fi
+
     SYMENV_AUTH0_CLIENT_DOMAIN=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLIENT_DOMAIN | tr -d \")
     SYMENV_AUTH0_CLIENT_AUDIENCE=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLIENT_AUDIENCE | tr -d \")
     SYMENV_AUTH0_CLIENT_ID=$(echo "${CONFIG_RESPONSE}" | jq .AUTH0_CLI_CLIENT_ID | tr -d \")
@@ -447,6 +488,7 @@
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
           ;;
         --force) FORCE_REINSTALL=1 ;;
+        --debug) ;;
         *)
           if [ -n "${1-}" ]; then
             PROVIDED_VERSION="$1"
@@ -469,7 +511,7 @@
 
     symenv_fetch_remote_versions "$REGISTRY" > /dev/null 2>&1
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
-    if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
+    if [ ! -e "${SYMENV_DIR}"/versions/versions.meta ]; then
       # shellcheck disable=SC2216
       STATUS=$(echo "$PACKAGES_OF_INTEREST" | jq -e . >/dev/null 2>&1  | echo "${PIPESTATUS[1]}")
       if [[ ${STATUS} -eq 0 ]]; then
@@ -479,7 +521,7 @@
         return 44
       fi
     fi
-    MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta "${PROVIDED_VERSION}")"
+    MAPPED_VERSION="$(symenv_config_get "${SYMENV_DIR}"/versions/versions.meta "${PROVIDED_VERSION}")"
     symenv_debug "Mapped version ${PROVIDED_VERSION} to package ${MAPPED_VERSION}"
 
     if [ -z "$MAPPED_VERSION" ]; then
@@ -487,7 +529,7 @@
       return 44
     fi
 
-    mkdir -p ${SYMENV_DIR}/versions/
+    mkdir -p "${SYMENV_DIR}/versions/"
     TARGET_PATH=${SYMENV_DIR}/versions/${PROVIDED_VERSION}
 
     if [[ -e ${TARGET_PATH} && ${FORCE_REINSTALL} -ne 1 ]]; then
@@ -564,6 +606,7 @@
     chmod 0600 "${HOME}/.symenvrc"
     while [ $# -ne 0 ]; do
       case "$1" in
+        --debug);;
         get)
           symenv_echo "$(symenv_config_get "${HOME}/.symenvrc" "${@:2}")"
         ;;
@@ -582,6 +625,7 @@
     local OVERRIDE
     OVERRIDE="$(symenv_config_get "${HOME}/.symenvrc" registry)"
     if [ -n "$OVERRIDE" ]; then
+      symenv_debug "Using custom registry from .symenvrc: ${OVERRIDE}"
       export SYMENV_REGISTRY=$OVERRIDE
     fi
     unset OVERRIDE
@@ -594,11 +638,12 @@
     FORCE_REAUTH=0
     while [ $# -ne 0 ]; do
       case "$1" in
+        --debug);;
         --force-auth) FORCE_REAUTH=1 ;;
         --registry*)
           REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
-          symenv_debug "Using auth registry override: $REGISTRY_OVERRIDE"
+          symenv_debug "Using command-line auth registry override: $REGISTRY_OVERRIDE"
         ;;
       esac
       shift
@@ -620,6 +665,7 @@
           symenv_debug "Refreshing tokens using refresh token ${SYMENV_REFRESH_TOKEN}"
           # Our access token is invalid but we have a refresh token, let's refresh
           symenv_do_auth "$REGISTRY" --refresh
+          [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
           symenv_debug "Setting access token ${SYMENV_ACCESS_TOKEN}"
           symenv_debug "Setting refresh token ${SYMENV_REFRESH_TOKEN}"
           symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
@@ -636,7 +682,7 @@
       chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
       symenv_config_set "${HOME}/.symenvrc" _refresh_token "${SYMENV_REFRESH_TOKEN}"
-      symenv_echo "✅ Authentication successful"
+      symenv_success "Authentication successful"
     fi
     export SYMENV_ACCESS_TOKEN
     unset FORCE_REAUTH
@@ -676,15 +722,18 @@
     COMMAND="${1-}"
     shift
 
+    for value in "$@"; do
+        if [ "--debug" = "$value" ]; then
+           export SYMENV_DEBUG=1
+           symenv_debug "Using debug output"
+        fi
+    done
+
     # Override our default registry to use whatever the user has set in his `~/.symenvrc` file
     touch "${HOME}/.symenvrc"
     symenv_export_registry_from_settings
 
-    if [ "1" = "${SYMENV_DEBUG}" ]; then
-      symenv_debug "Using debug output"
-    fi
-
-    symenv_debug "$COMMAND" "$@"
+    symenv_debug "Executing " "$COMMAND" "$@"
     case $COMMAND in
       "help" | "--help")
         version=$(symenv --version)
@@ -710,6 +759,7 @@
       ;;
       "install" | "i")
         symenv_auth "$@"
+        [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
         symenv_install_from_remote "$@"
       ;;
       "use" | "activate")
@@ -756,9 +806,9 @@
         # Check if the version is installed
         if symenv_has_managed_sdk "${PROVIDED_VERSION}"; then
           symenv_echo "Switching managed version to ${PROVIDED_VERSION}"
-          rm ${SYMENV_DIR}/versions/current 2>/dev/null
-          ln -s ${SYMENV_DIR}/versions/"${PROVIDED_VERSION}" ${SYMENV_DIR}/versions/current
-          symenv_append_path PATH ${SYMENV_DIR}/versions/current/bin
+          rm "${SYMENV_DIR}/versions/current" 2>/dev/null
+          ln -s "${SYMENV_DIR}/versions/${PROVIDED_VERSION}" "${SYMENV_DIR}/versions/current"
+          symenv_append_path PATH "${SYMENV_DIR}/versions/current/bin"
           export PATH=$PATH
         else
           symenv_err "Version ${PROVIDED_VERSION} is not installed. Please install it before switching."
@@ -771,6 +821,7 @@
       ;;
       "remote" | "ls-remote" | "list-remote")
         symenv_auth "$@"
+        [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
         symenv_list_remote_versions "$@"
       ;;
       "list" | "ls" | "local")
@@ -780,12 +831,12 @@
         symenv_deactivate
       ;;
       "reset")
-        rm -rf ${SYMENV_DIR}/versions 2>/dev/null
+        rm -rf "${SYMENV_DIR}"/versions 2>/dev/null
         rm "${HOME}"/.symenvrc 2>/dev/null
       ;;
       "current")
         if symenv_has_managed_sdk; then
-          TARGET=$(readlink ${SYMENV_DIR}/versions/current | sed "s|$SYMENV_DIR/versions/||g")
+          TARGET=$(readlink "${SYMENV_DIR}"/versions/current | sed "s|$SYMENV_DIR/versions/||g")
           if symenv_has "sym"; then
             VERSION=$(sym --version)
           else
@@ -802,7 +853,7 @@
       ;;
       "version" | "-version" |  "--version")
         CURRENT=$(pwd)
-        cd $SYMENV_DIR
+        cd "$SYMENV_DIR"
         TAG=$(git describe --long --first-parent)
         symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
         cd "$CURRENT"
