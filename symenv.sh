@@ -41,10 +41,8 @@
   }
 
   symenv_debug() {
-    if [ "stdout" = "${SYMENV_DEBUG}" ]; then
-        echo "$*"
-    fi
     if [ "1" = "${SYMENV_DEBUG}" ]; then
+        echo "$*"
         echo "$*" >> symenv_debug.log
     fi
   }
@@ -720,15 +718,18 @@
     COMMAND="${1-}"
     shift
 
+    for value in "$@"; do
+        if [ "--debug" = "$value" ]; then
+           export SYMENV_DEBUG=1
+           symenv_debug "Using debug output"
+        fi
+    done
+
     # Override our default registry to use whatever the user has set in his `~/.symenvrc` file
     touch "${HOME}/.symenvrc"
     symenv_export_registry_from_settings
 
-    if [ "1" = "${SYMENV_DEBUG}" ]; then
-      symenv_debug "Using debug output"
-    fi
-
-    symenv_debug "$COMMAND" "$@"
+    symenv_debug "Executing " "$COMMAND" "$@"
     case $COMMAND in
       "help" | "--help")
         version=$(symenv --version)
