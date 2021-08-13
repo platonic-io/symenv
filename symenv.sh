@@ -225,6 +225,7 @@
     while [ $# -ne 0 ]; do
       case "$1" in
         --all) SHOW_ALL=1 ;;
+        --debug);;
         --registry*)
           REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
@@ -487,6 +488,7 @@
           [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
           ;;
         --force) FORCE_REINSTALL=1 ;;
+        --debug) ;;
         *)
           if [ -n "${1-}" ]; then
             PROVIDED_VERSION="$1"
@@ -604,6 +606,7 @@
     chmod 0600 "${HOME}/.symenvrc"
     while [ $# -ne 0 ]; do
       case "$1" in
+        --debug);;
         get)
           symenv_echo "$(symenv_config_get "${HOME}/.symenvrc" "${@:2}")"
         ;;
@@ -635,6 +638,7 @@
     FORCE_REAUTH=0
     while [ $# -ne 0 ]; do
       case "$1" in
+        --debug);;
         --force-auth) FORCE_REAUTH=1 ;;
         --registry*)
           REGISTRY_OVERRIDE=$(echo "$1" | sed 's/\-\-registry\=//g')
