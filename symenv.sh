@@ -211,6 +211,7 @@
         --all) SHOW_ALL=1 ;;
         --registry*)
           REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
         ;;
       esac
       shift
@@ -458,6 +459,7 @@
       case "$1" in
         --registry*)
           REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
           ;;
         --force) FORCE_REINSTALL=1 ;;
         *)
@@ -609,6 +611,7 @@
         --force-auth) FORCE_REAUTH=1 ;;
         --registry*)
           REGISTRY_OVERRIDE=`echo $1 | sed 's/\-\-registry\=//g'`
+          [ "" = "$REGISTRY_OVERRIDE" ] && symenv_err "Error: Missing argument for --registry=<registry>" && return 1
           symenv_debug "Using auth registry override: $REGISTRY_OVERRIDE"
         ;;
       esac
@@ -712,6 +715,7 @@
         symenv_echo '  symenv ls | list | local                       List the installed versions of the SDK'
         symenv_echo '  symenv ls-remote | list-remote | remote        List the available remote versions of the SDK'
         symenv_echo '    --all                                          Include the non-release versions'
+        symenv_echo '    --registry=<registry>                          Show versions from a specific registry'
         symenv_echo '    --force-auth                                   Refresh the user token before fetching versions'
         symenv_echo '  symenv vscode                                  Installs the VSCode extension for SymPL (requires "code" in your path)'
         symenv_echo '  symenv reset                                   Resets your environment to a fresh install of symenv'
