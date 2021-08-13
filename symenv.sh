@@ -107,7 +107,7 @@
   symenv_install_vscode_extension() {
     if symenv_has_managed_sdk ; then
       if symenv_has code ; then
-        EXTENSION_VSIX=$(find ${SYMENV_DIR}/versions/current/ide -name "*.vsix")
+        EXTENSION_VSIX=$(find "${SYMENV_DIR}"/versions/current/ide -name "*.vsix")
         TMPFILE=$(mktemp /tmp/vscode_symenv.XXXXXX) || exit 1
         code --install-extension "$EXTENSION_VSIX" > "$TMPFILE" 2>&1
         symenv_echo "$(grep "vsix" --color=never < "$TMPFILE")"
@@ -196,21 +196,21 @@
       mkdir -p "${SYMENV_DIR}/versions"
     fi
     symenv_debug "Caching versions resolution to ${META_FILE}"
-    echo "" > $META_FILE
+    echo "" > "$META_FILE"
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
       symenv_debug "Caching release ${row}"
-      echo "${row}" | sed "s/cicd_sdk\///g" >> $META_FILE
+      echo "${row}" | sed "s/cicd_sdk\///g" >> "$META_FILE"
     done
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
         key=$(echo "${row}" | sed "s/=.*$//")
         value=$(echo "${row}" | sed "s/^.*=//" | sed "s/cicd_sdk\///g")
         symenv_debug "Caching other ${key} = ${value}"
-        symenv_config_set $META_FILE "$key" "$value"
+        symenv_config_set "$META_FILE" "$key" "$value"
     done
     # BY_UPDATED_DATE=$(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)')
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
       symenv_debug "Caching develop ${row}"
-      echo "${row}" | sed "s/cicd_sdk\///g" >> $META_FILE
+      echo "${row}" | sed "s/cicd_sdk\///g" >> "$META_FILE"
     done
     symenv_echo "${PACKAGES_OF_INTEREST}"
   }
@@ -382,7 +382,7 @@
     CONFIG_RESPONSE=$(curl --silent --proto '=https' --tlsv1.2 --request GET \
                            --url "https://${REGISTRY}/api/config")
 
-    if ! echo $CONFIG_RESPONSE | jq -e . >/dev/null 2>&1 ; then
+    if ! echo "$CONFIG_RESPONSE" | jq -e . >/dev/null 2>&1 ; then
         symenv_err "Unable to retrieve configuration from registry $REGISTRY"
         symenv_info "You can use a different registry using the --registry flag."
         SYMENV_ACCESS_TOKEN=""
@@ -511,7 +511,7 @@
 
     symenv_fetch_remote_versions "$REGISTRY" > /dev/null 2>&1
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
-    if [ ! -e ${SYMENV_DIR}/versions/versions.meta ]; then
+    if [ ! -e "${SYMENV_DIR}"/versions/versions.meta ]; then
       # shellcheck disable=SC2216
       STATUS=$(echo "$PACKAGES_OF_INTEREST" | jq -e . >/dev/null 2>&1  | echo "${PIPESTATUS[1]}")
       if [[ ${STATUS} -eq 0 ]]; then
@@ -521,7 +521,7 @@
         return 44
       fi
     fi
-    MAPPED_VERSION="$(symenv_config_get ${SYMENV_DIR}/versions/versions.meta "${PROVIDED_VERSION}")"
+    MAPPED_VERSION="$(symenv_config_get "${SYMENV_DIR}"/versions/versions.meta "${PROVIDED_VERSION}")"
     symenv_debug "Mapped version ${PROVIDED_VERSION} to package ${MAPPED_VERSION}"
 
     if [ -z "$MAPPED_VERSION" ]; then
@@ -529,7 +529,7 @@
       return 44
     fi
 
-    mkdir -p ${SYMENV_DIR}/versions/
+    mkdir -p "${SYMENV_DIR}/versions/"
     TARGET_PATH=${SYMENV_DIR}/versions/${PROVIDED_VERSION}
 
     if [[ -e ${TARGET_PATH} && ${FORCE_REINSTALL} -ne 1 ]]; then
@@ -806,9 +806,9 @@
         # Check if the version is installed
         if symenv_has_managed_sdk "${PROVIDED_VERSION}"; then
           symenv_echo "Switching managed version to ${PROVIDED_VERSION}"
-          rm ${SYMENV_DIR}/versions/current 2>/dev/null
-          ln -s ${SYMENV_DIR}/versions/"${PROVIDED_VERSION}" ${SYMENV_DIR}/versions/current
-          symenv_append_path PATH ${SYMENV_DIR}/versions/current/bin
+          rm "${SYMENV_DIR}/versions/current" 2>/dev/null
+          ln -s "${SYMENV_DIR}/versions/${PROVIDED_VERSION}" "${SYMENV_DIR}/versions/current"
+          symenv_append_path PATH "${SYMENV_DIR}/versions/current/bin"
           export PATH=$PATH
         else
           symenv_err "Version ${PROVIDED_VERSION} is not installed. Please install it before switching."
@@ -831,12 +831,12 @@
         symenv_deactivate
       ;;
       "reset")
-        rm -rf ${SYMENV_DIR}/versions 2>/dev/null
+        rm -rf "${SYMENV_DIR}"/versions 2>/dev/null
         rm "${HOME}"/.symenvrc 2>/dev/null
       ;;
       "current")
         if symenv_has_managed_sdk; then
-          TARGET=$(readlink ${SYMENV_DIR}/versions/current | sed "s|$SYMENV_DIR/versions/||g")
+          TARGET=$(readlink "${SYMENV_DIR}"/versions/current | sed "s|$SYMENV_DIR/versions/||g")
           if symenv_has "sym"; then
             VERSION=$(sym --version)
           else
@@ -853,7 +853,7 @@
       ;;
       "version" | "-version" |  "--version")
         CURRENT=$(pwd)
-        cd $SYMENV_DIR
+        cd "$SYMENV_DIR"
         TAG=$(git describe --long --first-parent)
         symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
         cd "$CURRENT"
