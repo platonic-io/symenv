@@ -42,7 +42,7 @@
 
   symenv_debug() {
     if [ "1" = "${SYMENV_DEBUG}" ]; then
-        echo "$*"
+        >&2 echo "$*"
         echo "$*" >> symenv_debug.log
     fi
   }
