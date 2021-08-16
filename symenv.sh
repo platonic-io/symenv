@@ -6,6 +6,7 @@
   export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
   export SYMENV_DIR=$HOME/.symbiont
+  export SYMENV_DEFAULT_INSTALL_LINK=https://raw.githubusercontent.com/symbiont-io/symenv/main/install.sh
 
   symenv_is_zsh() {
     [ -n "${ZSH_VERSION-}" ]
@@ -856,6 +857,25 @@
         cd "$SYMENV_DIR"
         TAG=$(git describe --long --first-parent)
         symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
+        cd "$CURRENT"
+      ;;
+      "update")
+        CURRENT=$(pwd)
+        cd "$SYMENV_DIR"
+        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+        symenv_echo "Updating symenv to latest version found ($LATEST_TAG)"
+        git co -q $LATEST_TAG
+        . "$SYMENV_DIR/symenv.sh"
+        cd "$CURRENT"
+      ;;
+      "check")
+        CURRENT=$(pwd)
+        cd "$SYMENV_DIR"
+        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+        CURRENT_TAG=$(git describe)
+        if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
+            symenv_echo "symenv can be updated to version ${LATEST_TAG}, run `symenv update`."
+        fi
         cd "$CURRENT"
       ;;
       *)

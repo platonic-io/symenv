@@ -27,7 +27,7 @@ symenv_install_dir() {
 }
 
 symenv_latest_version() {
-  symenv_echo "v1.0.2"
+  symenv_echo "v1.1.0"
 }
 
 symenv_profile_is_bash_or_zsh() {
@@ -73,6 +73,7 @@ install_symenv_from_git() {
   local SYMENV_VERSION
   SYMENV_VERSION="${SYMENV_INSTALL_VERSION:-$(symenv_latest_version)}"
   if [ -n "${SYMENV_INSTALL_VERSION:-}" ]; then
+    echo "Installing custom version: ${SYMENV_INSTALL_VERSION}"
     # Check if version is an existing ref
     if command git ls-remote "$(symenv_source "git")" "$SYMENV_VERSION" | symenv_grep -q "$SYMENV_VERSION" ; then
       :
