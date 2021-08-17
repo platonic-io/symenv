@@ -710,7 +710,7 @@
     symenv_debug "Currently on tag ${CURRENT_TAG}. ${LATEST_TAG} is latest available."
     if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
       symenv_echo "Updating symenv to latest version found ($LATEST_TAG)"
-      git co -q $LATEST_TAG
+      git checkout -q $LATEST_TAG
       . "$SYMENV_DIR/symenv.sh"
     fi
     cd "$CURRENT"
