@@ -591,10 +591,11 @@
     local FILE
     local KEY
     FILE=${1-}
+    KEY=${2-}
+    symenv_debug "Getting $KEY from $FILE"
     if [ ! -e "${FILE}" ]; then
       symenv_err "Attempting to get in undefined file"
     fi
-    KEY=${2-}
     if [[ "" == "${KEY}" ]]; then
       symenv_err "Attempting to get undefined field"
     fi
@@ -678,6 +679,7 @@
     else
       # Otherwise, no file, means we go from scratch
       symenv_do_auth "$REGISTRY"
+      [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
       touch "${HOME}/.symenvrc"
       chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
