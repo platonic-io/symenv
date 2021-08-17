@@ -766,7 +766,13 @@
         symenv_echo '  symenv --help                                  Show this message'
         symenv_echo '  symenv --version                               Print out the version of symenv'
         symenv_echo '  symenv current                                 Print out the installed version of the SDK'
-        symenv_echo '  symenv config ls                               Print out the configuration used by symenv'
+        symenv_echo '  symenv config                                  Print out the configuration used by symenv'
+        symenv_echo '    ls                                             List all key value pairs in configuration'
+        symenv_echo '    get <key>                                      Print the value for <key>'
+        symenv_echo '    set <key> <value>                              Set the value for <key>'
+        symenv_echo '    eg.'
+        symenv_echo '        auto_update 1                              Turn on symenv auto-update (this will not update the SDK)'
+        symenv_echo '        registry iportal.symbiont.io               Points the asset registry to another hosted registry '
         symenv_echo '  symenv install [options] <version>             Download and install a <version> of the SDK'
         symenv_echo '    --registry=<registry>                          When downloading, use this registry'
         symenv_echo '    --force-auth                                   Refresh the user token before downloading'
@@ -779,6 +785,8 @@
         symenv_echo '    --registry=<registry>                          Show versions from a specific registry'
         symenv_echo '    --force-auth                                   Refresh the user token before fetching versions'
         symenv_echo '  symenv vscode                                  Installs the VSCode extension for SymPL (requires "code" in your path)'
+        symenv_echo '  symenv check                                   Checks for updates on symenv (does not install)'
+        symenv_echo '  symenv update                                  Updates symenv to the latest update available'
         symenv_echo '  symenv reset                                   Resets your environment to a fresh install of symenv'
       ;;
       "install" | "i")
