@@ -6,6 +6,7 @@
   export SYMENV_REGISTRY=portal.symbiont.io
   export SYMENV_DEBUG=0
   export SYMENV_DIR=$HOME/.symbiont
+  export SYMENV_DEFAULT_INSTALL_LINK=https://raw.githubusercontent.com/symbiont-io/symenv/main/install.sh
 
   symenv_is_zsh() {
     [ -n "${ZSH_VERSION-}" ]
@@ -699,6 +700,21 @@
     fi
   }
 
+  symenv_update()
+  {
+    CURRENT=$(pwd)
+    cd "$SYMENV_DIR"
+    LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+    CURRENT_TAG=$(git describe)
+    symenv_debug "Currently on tag ${CURRENT_TAG}. ${LATEST_TAG} is latest available."
+    if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
+      symenv_echo "Updating symenv to latest version found ($LATEST_TAG)"
+      git co -q $LATEST_TAG
+      . "$SYMENV_DIR/symenv.sh"
+    fi
+    cd "$CURRENT"
+  }
+
   symenv() {
     if [ $# -lt 1 ]; then
       symenv --help
@@ -734,6 +750,12 @@
     # Override our default registry to use whatever the user has set in his `~/.symenvrc` file
     touch "${HOME}/.symenvrc"
     symenv_export_registry_from_settings
+    SYMENV_AUTO_UPDATE="$(symenv_config_get "${HOME}/.symenvrc" auto_update)"
+
+    if [ "${SYMENV_AUTO_UPDATE}" = "1" ]; then
+        symenv_debug "Using auto_update. Verifying if we need to update."
+        symenv_update
+    fi
 
     symenv_debug "Executing " "$COMMAND" "$@"
     case $COMMAND in
@@ -858,6 +880,19 @@
         cd "$SYMENV_DIR"
         TAG=$(git describe --long --first-parent)
         symenv_echo "Symbiont Assembly SDK Manager (${TAG})"
+        cd "$CURRENT"
+      ;;
+      "update")
+        symenv_update
+      ;;
+      "check")
+        CURRENT=$(pwd)
+        cd "$SYMENV_DIR"
+        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+        CURRENT_TAG=$(git describe)
+        if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
+            symenv_echo "symenv can be updated to version ${LATEST_TAG}, run `symenv update`."
+        fi
         cd "$CURRENT"
       ;;
       *)
