@@ -108,7 +108,7 @@
   symenv_install_vscode_extension() {
     if symenv_has_managed_sdk ; then
       if symenv_has code ; then
-        EXTENSION_VSIX=$(find "${SYMENV_DIR}"/versions/current/ide -name "*.vsix")
+        EXTENSION_VSIX=$(find "${SYMENV_DIR}"/versions/current/ide -type f \( -iname "*.vsix" ! -iname "._*"\))
         TMPFILE=$(mktemp /tmp/vscode_symenv.XXXXXX) || exit 1
         code --install-extension "$EXTENSION_VSIX" > "$TMPFILE" 2>&1
         symenv_echo "$(grep "vsix" --color=never < "$TMPFILE")"
