@@ -591,10 +591,11 @@
     local FILE
     local KEY
     FILE=${1-}
+    KEY=${2-}
+    symenv_debug "Getting $KEY from $FILE"
     if [ ! -e "${FILE}" ]; then
       symenv_err "Attempting to get in undefined file"
     fi
-    KEY=${2-}
     if [[ "" == "${KEY}" ]]; then
       symenv_err "Attempting to get undefined field"
     fi
