@@ -678,6 +678,7 @@
     else
       # Otherwise, no file, means we go from scratch
       symenv_do_auth "$REGISTRY"
+      [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
       touch "${HOME}/.symenvrc"
       chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
