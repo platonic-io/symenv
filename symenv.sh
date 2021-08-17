@@ -698,6 +698,21 @@
     fi
   }
 
+  symenv_update()
+  {
+    CURRENT=$(pwd)
+    cd "$SYMENV_DIR"
+    LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+    CURRENT_TAG=$(git describe)
+    symenv_debug "Currently on tag ${CURRENT_TAG}. ${LATEST_TAG} is latest available."
+    if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
+      symenv_echo "Updating symenv to latest version found ($LATEST_TAG)"
+      git co -q $LATEST_TAG
+      . "$SYMENV_DIR/symenv.sh"
+    fi
+    cd "$CURRENT"
+  }
+
   symenv() {
     if [ $# -lt 1 ]; then
       symenv --help
@@ -733,6 +748,12 @@
     # Override our default registry to use whatever the user has set in his `~/.symenvrc` file
     touch "${HOME}/.symenvrc"
     symenv_export_registry_from_settings
+    SYMENV_AUTO_UPDATE="$(symenv_config_get "${HOME}/.symenvrc" auto_update)"
+
+    if [ "${SYMENV_AUTO_UPDATE}" = "1" ]; then
+        symenv_debug "Using auto_update. Verifying if we need to update."
+        symenv_update
+    fi
 
     symenv_debug "Executing " "$COMMAND" "$@"
     case $COMMAND in
@@ -860,13 +881,7 @@
         cd "$CURRENT"
       ;;
       "update")
-        CURRENT=$(pwd)
-        cd "$SYMENV_DIR"
-        LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-        symenv_echo "Updating symenv to latest version found ($LATEST_TAG)"
-        git co -q $LATEST_TAG
-        . "$SYMENV_DIR/symenv.sh"
-        cd "$CURRENT"
+        symenv_update
       ;;
       "check")
         CURRENT=$(pwd)
