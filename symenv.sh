@@ -704,6 +704,7 @@
   {
     CURRENT=$(pwd)
     cd "$SYMENV_DIR"
+    git fetch --all --quiet
     LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
     CURRENT_TAG=$(git describe)
     symenv_debug "Currently on tag ${CURRENT_TAG}. ${LATEST_TAG} is latest available."
@@ -896,6 +897,7 @@
       "check")
         CURRENT=$(pwd)
         cd "$SYMENV_DIR"
+        git fetch --all --quiet
         LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
         CURRENT_TAG=$(git describe)
         if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
