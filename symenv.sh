@@ -153,7 +153,7 @@
     local REGISTRY
     REGISTRY_OVERRIDE=$1
     REGISTRY=$SYMENV_REGISTRY
-    CONFIG_REGISTRY=$(symenv_config get registry)
+    CONFIG_REGISTRY=$(symenv_config_get ~/.symenvrc registry)
     [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
     [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=$REGISTRY_OVERRIDE
 
@@ -236,11 +236,12 @@
     done
 
     REGISTRY=${SYMENV_REGISTRY}
-    CONFIG_REGISTRY=$(symenv_config get registry)
+    CONFIG_REGISTRY=$(symenv_config_get ~/.symenvrc registry)
     [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
     [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
 
     PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions "${REGISTRY}")
+    [ -z "$PACKAGES_OF_INTEREST" ] && return 44
     # shellcheck disable=SC2216
     STATUS=$(echo "$PACKAGES_OF_INTEREST" | jq -e . >/dev/null 2>&1  | echo "${PIPESTATUS[1]}")
     if [[ ${STATUS} -eq 0 ]]; then
@@ -375,7 +376,7 @@
 
     REGISTRY=$1
     symenv_debug "Registry passed to do_auth ${REGISTRY}"
-    CONFIG_REGISTRY=$(symenv_config get registry)
+    CONFIG_REGISTRY=$(symenv_config_get ~/.symenvrc registry)
     [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
 
     symenv_debug "Authenticating (refresh: ${REFRESH}) to registry ${REGISTRY}"
@@ -505,12 +506,13 @@
     fi
 
     REGISTRY=${SYMENV_REGISTRY}
-    CONFIG_REGISTRY=$(symenv_config get registry)
+    CONFIG_REGISTRY=$(symenv_config_get ~/.symenvrc registry)
     [ -n "$CONFIG_REGISTRY" ] && REGISTRY=${CONFIG_REGISTRY}
     [ -n "$REGISTRY_OVERRIDE" ] && REGISTRY=${REGISTRY_OVERRIDE}
     symenv_debug "Installing version ${PROVIDED_VERSION} (force: ${FORCE_REINSTALL}, registry: ${REGISTRY})"
 
-    symenv_fetch_remote_versions "$REGISTRY" > /dev/null 2>&1
+    PACKAGES_OF_INTEREST=$(symenv_fetch_remote_versions "${REGISTRY}")
+    [ -z "$PACKAGES_OF_INTEREST" ] && return 44
     SYMENV_ACCESS_TOKEN="$(symenv_config_get ~/.symenvrc _auth_token)"
     if [ ! -e "${SYMENV_DIR}"/versions/versions.meta ]; then
       # shellcheck disable=SC2216
