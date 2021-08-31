@@ -903,7 +903,7 @@
         LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
         CURRENT_TAG=$(git describe)
         if [[ "$CURRENT_TAG" != "$LATEST_TAG" ]]; then
-            symenv_echo "symenv can be updated to version ${LATEST_TAG}, run `symenv update`."
+            symenv_echo "symenv can be updated to version ${LATEST_TAG}, run \"symenv update\"."
         fi
         cd "$CURRENT"
       ;;
