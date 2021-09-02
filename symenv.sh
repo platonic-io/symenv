@@ -200,18 +200,18 @@
     echo "" > "$META_FILE"
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
       symenv_debug "Caching release ${row}"
-      echo "${row}" | sed "s/cicd_sdk\///g" >> "$META_FILE"
+      echo "${row}" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///" >> "$META_FILE"
     done
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
         key=$(echo "${row}" | sed "s/=.*$//")
-        value=$(echo "${row}" | sed "s/^.*=//" | sed "s/cicd_sdk\///g")
+        value=$(echo "${row}" | sed "s/^.*=//" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///")
         symenv_debug "Caching other ${key} = ${value}"
         symenv_config_set "$META_FILE" "$key" "$value"
     done
     # BY_UPDATED_DATE=$(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)')
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "develop")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "develop=\(.name)"'); do
       symenv_debug "Caching develop ${row}"
-      echo "${row}" | sed "s/cicd_sdk\///g" >> "$META_FILE"
+      echo "${row}" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///" >> "$META_FILE"
     done
     symenv_echo "${PACKAGES_OF_INTEREST}"
   }
