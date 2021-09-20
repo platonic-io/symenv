@@ -198,11 +198,19 @@
     fi
     symenv_debug "Caching versions resolution to ${META_FILE}"
     echo "" > "$META_FILE"
-    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)=\(.name)"'); do
+    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" |
+                     jq -r '[.[] | select(.metadata.kind? == "release")]' |
+                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
+                     jq -r '.[] | "\(.metadata.version)=\(.name)"'
+                ); do
       symenv_debug "Caching release ${row}"
       echo "${row}" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///" >> "$META_FILE"
     done
-    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'); do
+    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" |
+                     jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "release")]' |
+                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
+                     jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'
+                ); do
         key=$(echo "${row}" | sed "s/=.*$//")
         value=$(echo "${row}" | sed "s/^.*=//" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///")
         symenv_debug "Caching other ${key} = ${value}"
@@ -254,7 +262,9 @@
     symenv_debug "${LENGTH} packages found"
     if [ ${SHOW_ALL} -ne 1 ]; then
       symenv_debug "Filtering out to releases only"
-      PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
+      PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" |
+                                jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]' |
+                                jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]')
       RELEASE_VERSIONS=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
       symenv_echo "${RELEASE_VERSIONS}"
     else
@@ -263,7 +273,9 @@
       ALL_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]')
       DEVELOP_PACKAGE_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]')
       symenv_debug "Found develop packages: ${DEVELOP_PACKAGE_OF_INTEREST}"
-      RELEASE_VERSIONS=$(echo "${RELEASE_PACKAGES_OF_INTEREST}" |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
+      RELEASE_VERSIONS=$(echo "${RELEASE_PACKAGES_OF_INTEREST}" |
+                             jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
+                             jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
       DEVELOP_VERSION=$(echo "${DEVELOP_PACKAGE_OF_INTEREST}" | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]')
       #  | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'
       if [ -n "$RELEASE_VERSIONS" ]; then
