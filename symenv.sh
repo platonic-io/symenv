@@ -189,7 +189,7 @@
 
     PACKAGES_OF_INTEREST=$(echo "${PACKAGES_AVAILABLE}" | jq .packages | \
       jq '[.[] | select(.metadata.os=="'${OS_FILTER}'")]')
-    symenv_debug "Packages of interest: ${PACKAGES_OF_INTEREST}"
+    symenv_debug "Packages for current OS (${OS_FILTER}): ${PACKAGES_OF_INTEREST}"
 
     local META_FILE
     META_FILE="${SYMENV_DIR}/versions/versions.meta"
