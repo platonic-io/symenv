@@ -255,24 +255,19 @@
     if [ ${SHOW_ALL} -ne 1 ]; then
       symenv_debug "Filtering out to releases only"
       PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
-      DISPLAY_VERSIONS=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
-      symenv_echo "${DISPLAY_VERSIONS}"
+      RELEASE_VERSIONS=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
+      symenv_echo "${RELEASE_VERSIONS}"
     else
       symenv_debug "Filtering out to all packages"
       RELEASE_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
       ALL_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop")]')
       DEVELOP_PACKAGE_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="develop")]')
       symenv_debug "Found develop packages: ${DEVELOP_PACKAGE_OF_INTEREST}"
-      DISPLAY_VERSIONS=$(echo "${ALL_PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.preRelease!="release" and .preRelease!="")]' | \
-        jq '[.[] | "\(.metadata.version)-\(.metadata.kind)"] | unique' | jq --raw-output '.[]')
       RELEASE_VERSIONS=$(echo "${RELEASE_PACKAGES_OF_INTEREST}" |  jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
       DEVELOP_VERSION=$(echo "${DEVELOP_PACKAGE_OF_INTEREST}" | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]')
       #  | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'
       if [ -n "$RELEASE_VERSIONS" ]; then
         symenv_echo "${RELEASE_VERSIONS}"
-      fi
-      if [ -n "$DISPLAY_VERSIONS" ]; then
-        symenv_echo "${DISPLAY_VERSIONS}"
       fi
       if [ -n "$DEVELOP_VERSION" ]; then
         symenv_echo "${DEVELOP_VERSION}"
