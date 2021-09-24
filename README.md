@@ -25,12 +25,12 @@ Prerequisites:
 
 Remotely
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf https://<host>/<path>/install.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://<host>/<path>/install.sh | bash
 ```
 
 eg. 
 ```shell
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/symbiont-io/symenv/main/install.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/symbiont-io/symenv/main/install.sh | bash
 ```
 
 ###### Commands
