@@ -207,7 +207,7 @@
       echo "${row}" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///" >> "$META_FILE"
     done
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" |
-                     jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "main" and .metadata.kind? != "release")]' |
+                     jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "next" and .metadata.kind? != "release")]' |
                      jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
                      jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'
                 ); do
@@ -216,7 +216,7 @@
         symenv_debug "Caching other ${key} = ${value}"
         symenv_config_set "$META_FILE" "$key" "$value"
     done
-    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "main")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "next=\(.name)"'); do
+    for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? == "next")]' | jq -r '[.[]] | sort_by(.metadata.updated)' | jq -r '.[-1] | "next=\(.name)"'); do
       symenv_debug "Caching next ${row}"
       echo "${row}" | sed "s/cicd_sdk\///g; s/sdk_packages_lite\///g; s/sdk_packages_full\///" >> "$META_FILE"
     done
@@ -269,8 +269,8 @@
     else
       symenv_debug "Filtering out to all packages"
       RELEASE_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
-      ALL_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop" and .metadata.kind?!="main")]')
-      MAIN_PACKAGE_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="main")]')
+      ALL_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop" and .metadata.kind?!="next")]')
+      MAIN_PACKAGE_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="next")]')
       symenv_debug "Found next packages: ${MAIN_PACKAGE_OF_INTEREST}"
       RELEASE_VERSIONS=$(echo "${RELEASE_PACKAGES_OF_INTEREST}" |
                              jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
