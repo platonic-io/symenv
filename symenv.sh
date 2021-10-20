@@ -267,22 +267,11 @@
       RELEASE_VERSIONS=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
       symenv_echo "${RELEASE_VERSIONS}"
     else
-      symenv_debug "Filtering out to all packages"
-      RELEASE_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]')
-      ALL_PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?!="" and .metadata.kind?!="develop" and .metadata.kind?!="next")]')
-      MAIN_PACKAGE_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" | jq -r '[.[] | select(.metadata.kind? != null and .metadata.kind?=="next")]')
-      symenv_debug "Found next packages: ${MAIN_PACKAGE_OF_INTEREST}"
-      RELEASE_VERSIONS=$(echo "${RELEASE_PACKAGES_OF_INTEREST}" |
-                             jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
-                             jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
-      MAIN_VERSION=$(echo "${MAIN_PACKAGE_OF_INTEREST}" | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]')
-      #  | jq '[.[] | "\(.metadata.kind)"]' | jq --raw-output '.[0]'
-      if [ -n "$RELEASE_VERSIONS" ]; then
-        symenv_echo "${RELEASE_VERSIONS}"
-      fi
-      if [ -n "$MAIN_VERSION" ]; then
-        symenv_echo "${MAIN_VERSION}"
-      fi
+        symenv_debug "Filtering out to all packages"
+        local META_FILE
+        META_FILE="${SYMENV_DIR}/versions/versions.meta"
+        VERSIONS=$(cat $META_FILE | sed 's/=.*$//')
+        symenv_echo $VERSIONS
     fi
   }
 
