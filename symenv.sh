@@ -270,8 +270,8 @@
         symenv_debug "Filtering out to all packages"
         local META_FILE
         META_FILE="${SYMENV_DIR}/versions/versions.meta"
-        VERSIONS=$(cat $META_FILE | sed 's/=.*$//')
-        symenv_echo $VERSIONS
+        VERSIONS="$(cat $META_FILE | sed '/^$/d' | sed 's/=.*$//')"
+        symenv_echo "$VERSIONS"
     fi
   }
 
