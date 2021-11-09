@@ -200,7 +200,7 @@
     echo "" > "$META_FILE"
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" |
                      jq -r '[.[] | select(.metadata.kind? == "release")]' |
-                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
+                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*(?<branch>[a-z_-]+)?-(?<counter>[1-9]+)") | .counter | tonumber) | reverse | .[0]  ]' |
                      jq -r '.[] | "\(.metadata.version)=\(.name)"'
                 ); do
       symenv_debug "Caching release ${row}"
@@ -208,7 +208,7 @@
     done
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" |
                      jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "next" and .metadata.kind? != "release")]' |
-                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]' |
+                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*(?<branch>[a-z_-]+)?-(?<counter>[1-9]+)") | .counter | tonumber) | reverse | .[0]  ]' |
                      jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'
                 ); do
         key=$(echo "${row}" | sed "s/=.*$//")
@@ -263,7 +263,7 @@
       symenv_debug "Filtering out to releases only"
       PACKAGES_OF_INTEREST=$(echo "${PACKAGES_OF_INTEREST}" |
                                 jq '[.[] | select(.metadata.kind? != null and .metadata.kind == "release")]' |
-                                jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*-(?<counter>[1-9]+)") | .counter) | reverse | .[0]  ]')
+                                jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*(?<branch>[a-z_-]+)?-(?<counter>[1-9]+)") | .counter | tonumber) | reverse | .[0]  ]')
       RELEASE_VERSIONS=$(echo "${PACKAGES_OF_INTEREST}" | jq '[.[] | "\(.metadata.version)"]' | jq --raw-output '.[]')
       symenv_echo "${RELEASE_VERSIONS}"
     else
