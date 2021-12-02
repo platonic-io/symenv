@@ -208,7 +208,7 @@
     done
     for row in $(symenv_echo "${PACKAGES_OF_INTEREST}" |
                      jq -r '[.[] | select(.metadata.kind != null and .metadata.kind? !="" and .metadata.kind? != "develop" and .metadata.kind? != "next" and .metadata.kind? != "release")]' |
-                     jq -r 'group_by(.metadata.version) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*(?<branch>[a-z_-]+)?-(?<counter>[1-9]+)") | .counter | tonumber) | reverse | .[0]  ]' |
+                     jq -r 'group_by(.metadata.version)[] | group_by(.metadata.kind) | [ .[] | sort_by(.name | capture("[a-z_]*/v[0-9]*.[0-9]*.[0-9]*(?<branch>[a-z_-]+)?-(?<counter>[1-9]+)") | .counter | tonumber) | reverse | .[0]  ]' |
                      jq -r '.[] | "\(.metadata.version)-\(.metadata.kind)=\(.name)"'
                 ); do
         key=$(echo "${row}" | sed "s/=.*$//")
