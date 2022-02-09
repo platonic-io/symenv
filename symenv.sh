@@ -486,6 +486,7 @@
           ;;
         --force) FORCE_REINSTALL=1 ;;
         --debug) ;;
+        --force-auth) ;; 
         *)
           if [ -n "${1-}" ]; then
             PROVIDED_VERSION="$1"
