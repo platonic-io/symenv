@@ -428,7 +428,8 @@
       NEXT_WAIT_TIME=1
       until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && -n ${SYMENV_ACCESS_TOKEN} ]]; do
         symenv_send_token_request "${DEVICE_CODE}" "${SYMENV_AUTH0_CLIENT_DOMAIN}" "${SYMENV_AUTH0_CLIENT_ID}"
-        sleep $((NEXT_WAIT_TIME++))
+        $((NEXT_WAIT_TIME++))
+        sleep 1
       done
       [ "${NEXT_WAIT_TIME}" -lt 30 ]
 
@@ -678,7 +679,9 @@
     else
       # Otherwise, no file, means we go from scratch
       symenv_do_auth "$REGISTRY"
-      [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
+      if [ "" = "${SYMENV_ACCESS_TOKEN}" ] | [ null = "${SYMENV_ACCESS_TOKEN}" ]; then 
+        return 1
+      fi
       touch "${HOME}/.symenvrc"
       chmod 0600 "${HOME}/.symenvrc"
       symenv_config_set "${HOME}/.symenvrc" _auth_token "${SYMENV_ACCESS_TOKEN}"
