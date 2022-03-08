@@ -428,7 +428,7 @@
       NEXT_WAIT_TIME=1
       until [ ${NEXT_WAIT_TIME} -eq 30 ] || [[ ${SYMENV_ACCESS_TOKEN} != "null" && -n ${SYMENV_ACCESS_TOKEN} ]]; do
         symenv_send_token_request "${DEVICE_CODE}" "${SYMENV_AUTH0_CLIENT_DOMAIN}" "${SYMENV_AUTH0_CLIENT_ID}"
-        $((NEXT_WAIT_TIME++))
+        NEXT_WAIT_TIME=$(( $NEXT_WAIT_TIME + 1 ))
         sleep 1
       done
       [ "${NEXT_WAIT_TIME}" -lt 30 ]
