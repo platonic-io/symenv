@@ -169,7 +169,11 @@
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
       symenv_err "Authentication error - use '--force-auth' to authenticate"
       return 41
+    elif [ "IncorrectPermissions" = "$HAS_ERROR" ]; then
+      symenv_err "Permissions error - please contact administrator for the correct permissions"
+      return 41
     fi
+
 
     if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
       # Linux
