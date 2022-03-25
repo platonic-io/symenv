@@ -554,10 +554,19 @@
     TARGET_FILE="${TARGET_PATH}/download.tar.gz"
 #    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
     symenv_download -L -C - --progress-bar "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
+
+    if [ ! -f "${TARGET_FILE}" ]; then
+      symenv_err "SDK Failed to Download"
+      return 44
+    fi
     tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}"
     rm "${TARGET_FILE}"
 
     CONTAINING_FOLDER=$(find "${TARGET_PATH}" -mindepth 2 -maxdepth 2 -type d)
+    if [ ! -f "${CONTAINING_FOLDER}"]; then
+      symenv_err "Lost SDK Downloaded Package"
+      return 44
+    fi
     mv "${CONTAINING_FOLDER}"/* "${TARGET_PATH}"
     FOLDER_TO_REMOVE=$(dirname "${CONTAINING_FOLDER}")
     rm -r "$FOLDER_TO_REMOVE"
