@@ -563,7 +563,7 @@
     rm "${TARGET_FILE}"
 
     CONTAINING_FOLDER=$(find "${TARGET_PATH}" -mindepth 2 -maxdepth 2 -type d)
-    if [ ! -f "${CONTAINING_FOLDER}"]; then
+    if [ ! -f "${CONTAINING_FOLDER}" ]; then
       symenv_err "Lost SDK Downloaded Package"
       return 44
     fi
