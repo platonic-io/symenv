@@ -559,17 +559,9 @@
       symenv_err "SDK Failed to Download"
       return 44
     fi
-    tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}"
+    
+    tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}" --strip-components=2
     rm "${TARGET_FILE}"
-
-    CONTAINING_FOLDER=$(find "${TARGET_PATH}" -mindepth 2 -maxdepth 2 -type d)
-    if [ -z "${CONTAINING_FOLDER}" ]; then
-      symenv_err "Lost SDK Downloaded Package"
-      return 44
-    fi
-    mv "${CONTAINING_FOLDER}"/* "${TARGET_PATH}"
-    FOLDER_TO_REMOVE=$(dirname "${CONTAINING_FOLDER}")
-    rm -r "$FOLDER_TO_REMOVE"
 
     if [[ -e "${SYMENV_DIR}/versions/current" ]]; then
       rm "${SYMENV_DIR}/versions/current"
