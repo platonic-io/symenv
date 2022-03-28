@@ -150,7 +150,11 @@
     if [ "Unauthorized" = "$HAS_ERROR" ]; then
       symenv_err "Authentication error - use '--force-auth' to authenticate"
       return 41
+    elif [ "IncorrectPermissions" = "$HAS_ERROR" ]; then
+      symenv_err "Permissions error - please contact administrator for the correct permissions"
+      return 41
     fi
+
 
     if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
       # Linux
@@ -531,13 +535,14 @@
     TARGET_FILE="${TARGET_PATH}/download.tar.gz"
 #    curl --silent --request GET "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
     symenv_download -L -C - --progress-bar "${SIGNED_DOWNLOAD_URL}" -o "${TARGET_FILE}"
-    tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}"
-    rm "${TARGET_FILE}"
 
-    CONTAINING_FOLDER=$(find "${TARGET_PATH}" -mindepth 2 -maxdepth 2 -type d)
-    mv "${CONTAINING_FOLDER}"/* "${TARGET_PATH}"
-    FOLDER_TO_REMOVE=$(dirname "${CONTAINING_FOLDER}")
-    rm -r "$FOLDER_TO_REMOVE"
+    if [ ! -f "${TARGET_FILE}" ]; then
+      symenv_err "SDK Failed to Download"
+      return 44
+    fi
+    
+    tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}" --strip-components=2
+    rm "${TARGET_FILE}"
 
     if [[ -e "${SYMENV_DIR}/versions/current" ]]; then
       rm "${SYMENV_DIR}/versions/current"
