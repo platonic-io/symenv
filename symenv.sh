@@ -105,25 +105,6 @@
     [ "$(symenv deactivate >/dev/null 2>&1 && command -v sym)" != '' ]
   }
 
-  symenv_install_vscode_extension() {
-    if symenv_has_managed_sdk ; then
-      if symenv_has code ; then
-        EXTENSION_VSIX=$(find "${SYMENV_DIR}"/versions/current/ide -type f \( -iname "*.vsix" ! -iname "._*" \))
-        TMPFILE=$(mktemp /tmp/vscode_symenv.XXXXXX) || exit 1
-        code --install-extension "$EXTENSION_VSIX" > "$TMPFILE" 2>&1
-        symenv_echo "$(grep "vsix" --color=never < "$TMPFILE")"
-      else
-        symenv_err "'code' is not in your PATH. Follow the instructions at \
-        https://code.visualstudio.com/docs/editor/extension-marketplace#_command-line-extension-management to \
-        add the required utility to your PATH."
-        return 44
-      fi
-    else
-      symenv_err "No managed version of the SDK found locally."
-      return 44
-    fi
-  }
-
   symenv_has_managed_sdk() {
     VERSION="${1-}"
     if [[ "" = "${VERSION}" ]]; then
@@ -786,7 +767,6 @@
         symenv_echo '    --all                                          Include the non-release versions'
         symenv_echo '    --registry=<registry>                          Show versions from a specific registry'
         symenv_echo '    --force-auth                                   Refresh the user token before fetching versions'
-        symenv_echo '  symenv vscode                                  Installs the VSCode extension for SymPL (requires "code" in your path)'
         symenv_echo '  symenv check                                   Checks for updates on symenv (does not install)'
         symenv_echo '  symenv update                                  Updates symenv to the latest update available'
         symenv_echo '  symenv reset                                   Resets your environment to a fresh install of symenv'
@@ -849,9 +829,6 @@
           return 127
         fi
 
-      ;;
-      "vscode")
-        symenv_install_vscode_extension
       ;;
       "remote" | "ls-remote" | "list-remote")
         symenv_auth "$@"
