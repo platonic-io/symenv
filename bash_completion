@@ -23,7 +23,7 @@ __symenv_commands() {
   COMMANDS='
     help install uninstall use
     current list ls list-remote ls-remote
-    deactivate version remote reset vscode'
+    deactivate version remote reset'
     case "${current_word}" in
       -*) __symenv_options ;;
       *) __symenv_generate_completion "${COMMANDS}" ;;

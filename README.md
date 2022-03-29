@@ -50,7 +50,6 @@ Usage:
   symenv ls | list | local                       List the installed versions of the SDK
   symenv ls-remote | list-remote | remote        List the available remote versions of the SDK
     --all                                          Include the non-release versions
-  symenv vscode                                  Installs the VSCode extension for SymPL (requires "code" in your path)
   symenv reset                                   Resets your environment to a fresh install of symenv
 ```
 
