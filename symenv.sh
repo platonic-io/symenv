@@ -563,6 +563,17 @@
       symenv_err "Attempting to set undefined field"
     fi
     VALUE=${3-}
+
+    #if there's no match, sed will just output the key itself
+    # otherwise set the key equal to the left size of the equal and set the value to the right side
+    if [[ "$(echo $KEY | sed 's/^\(.*\)=\(.*\)$/\2/g' )" != $KEY && $VALUE == "" ]];
+    then 
+      symenv_debug "Equals passed to ${KEY} and no value ${VALUE}"
+      VALUE="$(echo $KEY | sed 's/\(.*\)=\(.*\)/\2/g' )"
+      KEY="$(echo $KEY | sed 's/\(.*\)=\(.*\)/\1/g' )"
+    fi
+
+    if
     symenv_debug "Setting config key ${KEY} to ${VALUE}"
     HAS_VALUE=$(grep -R "^[#]*\s*${KEY}=.*" "${FILE}")
     symenv_debug "Value existing: ${HAS_VALUE}"
