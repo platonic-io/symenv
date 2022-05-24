@@ -1,5 +1,11 @@
 # symenv
 
+## [1.2.16] - 2022-05-24
+
+### Added
+
+- Login function which is independent from any other commands.
+
 ## [1.2.13] - 2020-03-30
 
 ### Removed
