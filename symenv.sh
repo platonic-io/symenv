@@ -762,6 +762,7 @@
         symenv_echo 'Usage:'
         symenv_echo '  symenv --help                                  Show this message'
         symenv_echo '  symenv --version                               Print out the version of symenv'
+        symenv_echo '  symenv login                                   Authenticate to the provided portal'
         symenv_echo '  symenv current                                 Print out the installed version of the SDK'
         symenv_echo '  symenv config                                  Print out the configuration used by symenv'
         symenv_echo '    ls                                             List all key value pairs in configuration'
@@ -848,6 +849,10 @@
         symenv_auth "$@"
         [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
         symenv_list_remote_versions "$@"
+      ;;
+      "login")
+        symenv_auth "$@"
+        [ "" = "${SYMENV_ACCESS_TOKEN}" ] && return 1
       ;;
       "list" | "ls" | "local")
         symenv_list_local_versions
