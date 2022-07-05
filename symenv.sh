@@ -159,7 +159,7 @@
     if [[ "${OSTYPE}" == "linux-gnu"* ]]; then
       # Linux
       OS_FILTER="linux"
-    elif [[ "${OSTYPE}" == "darwin"* ]]; then
+    elif [[ "${OSTYPE,,}" == "darwin"* ]]; then
       # Mac OSX
       OS_FILTER="macos"
     else
