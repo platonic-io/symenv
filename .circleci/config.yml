@@ -3,6 +3,21 @@ version: 2.1
 orbs:
   shellcheck: circleci/shellcheck@2.2.3
 
+jobs:
+  install_git:
+    docker:
+      - image: circleci/python:3.8  # Choose an appropriate Docker image for your project
+    steps:
+      - run:
+          name: Install Git
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y git
+      - run:
+          name: Verify Git Installation
+          command: git --version
+      - checkout  # Clones the repository using git
+
 workflows:
   main:
     jobs:
