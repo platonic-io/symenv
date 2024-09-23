@@ -6,7 +6,7 @@ orbs:
 jobs:
   install_git:
     docker:
-      - image: circleci/python:3.8  # Choose an appropriate Docker image for your project
+      - image: circleci/python:3.11  # Choose an appropriate Docker image for your project
     steps:
       - run:
           name: Install Git
