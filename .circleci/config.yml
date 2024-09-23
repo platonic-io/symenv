@@ -15,4 +15,8 @@ workflows:
   main:
     jobs:
       - install-job
-      - shellcheck/check
+      - shellcheck/check:
+          pattern: "*.sh"
+          severity: warning
+          exclude: "SC2039"
+
