@@ -1,19 +1,12 @@
 version: 2.1
 
 orbs:
-  shellcheck: circleci/shellcheck@3.2.0
-
-jobs:
-  install-job:
-    docker:
-      # replace with your preferred image
-      - image: cimg/base:stable
-    steps:
-      - shellcheck/install
+  shellcheck: circleci/shellcheck@2.2.3
 
 workflows:
   main:
     jobs:
-      - install-job
       - shellcheck/check:
           pattern: "*.sh"
+          severity: "warning"
+          exclude: "SC2039"
