@@ -15,3 +15,4 @@ workflows:
   main:
     jobs:
       - install-job
+      - shellcheck/check
