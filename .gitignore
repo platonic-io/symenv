@@ -1,2 +1,4 @@
 .idea
 symenv_debug.log
+circleci-key
+circleci-key.pub

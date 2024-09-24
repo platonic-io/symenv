@@ -3,7 +3,7 @@
 # ^-- Ignore warning about `local`s
 
 {
-  export SYMENV_REGISTRY=portal.symbiont.io
+  export SYMENV_REGISTRY=portal.platonic.io
   export SYMENV_DEBUG=0
   export SYMENV_DIR=$HOME/.symbiont
   export SYMENV_DEFAULT_INSTALL_LINK=https://raw.githubusercontent.com/symbiont-io/symenv/main/install.sh
