@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 { # this ensures the entire script is downloaded #
 
