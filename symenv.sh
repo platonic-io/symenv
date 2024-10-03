@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # shellcheck disable=SC2039
 # ^-- Ignore warning about `local`s
 
@@ -472,7 +472,7 @@
           ;;
         --force) FORCE_REINSTALL=1 ;;
         --debug) ;;
-        --force-auth) ;; 
+        --force-auth) ;;
         *)
           if [ -n "${1-}" ]; then
             PROVIDED_VERSION="$1"
@@ -540,7 +540,7 @@
       symenv_err "SDK Failed to Download"
       return 44
     fi
-    
+
     tar xzf "${TARGET_FILE}" --directory "${TARGET_PATH}" --strip-components=2
     rm "${TARGET_FILE}"
 
@@ -566,7 +566,7 @@
 
     #if there's no match, sed will just output the key itself
     # otherwise set the key equal to the left size of the equal and set the value to the right side
-    if [[ "$(echo $KEY | sed 's/^\(.*\)=\(.*\)$/\2/g' )" != $KEY && $VALUE == "" ]]; then 
+    if [[ "$(echo $KEY | sed 's/^\(.*\)=\(.*\)$/\2/g' )" != $KEY && $VALUE == "" ]]; then
       symenv_debug "Equals passed to ${KEY} and no value ${VALUE}"
       VALUE="$(echo $KEY | sed 's/\(.*\)=\(.*\)/\2/g' )"
       KEY="$(echo $KEY | sed 's/\(.*\)=\(.*\)/\1/g' )"
@@ -674,7 +674,7 @@
     else
       # Otherwise, no file, means we go from scratch
       symenv_do_auth "$REGISTRY"
-      if [ "" = "${SYMENV_ACCESS_TOKEN}" ] | [ null = "${SYMENV_ACCESS_TOKEN}" ]; then 
+      if [ "" = "${SYMENV_ACCESS_TOKEN}" ] | [ null = "${SYMENV_ACCESS_TOKEN}" ]; then
         return 1
       fi
       touch "${HOME}/.symenvrc"
