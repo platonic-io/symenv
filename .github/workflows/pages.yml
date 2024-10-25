@@ -1,0 +1,148 @@
+###
+# ```{rubric} GitHub Pages Workflow
+# ```
+# ---
+# This is a basic workflow to help you get started with Actions.
+#
+# ```{literalinclude} /.github/workflows/pages.yml
+# :language: yaml
+# :start-at: "name: Test, Build, Deploy to GitHub Pages\n"
+# :end-before: "###\n"
+# ```
+#
+# Set a name for the workflow.
+name: Test, Build, Deploy to GitHub Pages
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+###
+# ```{rubric} Permissions Updates
+# ```
+# Enable read for contents and issues, and write for checks and PRs.
+#
+# ```{literalinclude} /.github/workflows/pages.yml
+# :language: yaml
+# :start-at: "permissions:\n"
+# :end-before: "###\n"
+# ```
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+###
+# ```{rubric} Workflow Jobs
+# ```
+# ---
+# A workflow run is made up of one or more
+# jobs that can run sequentially or in parallel
+#
+jobs:
+  ###
+  # ```{rubric} markdownlint
+  # ```
+  # ---
+  # Check that the markdown in this repo is up to our (arbitrary) standards.
+  #
+  # ```{literalinclude} /.github/workflows/pages.yml
+  # :language: yaml
+  # :start-at: "markdownlint:\n"
+  # :end-before: "###\n"
+  # ```
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Set up NodeJS
+        uses: actions/setup-node@main
+      - name: Install the checker
+        run: npm i -g markdownlint-cli2 markdownlint-cli2-formatter-junit --save-dev
+      - name: Lint the Markdown
+        run: markdownlint-cli2 **/*.md *.md
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          check_name: markdownlint
+          comment_title: "Markdown Lint"
+          files: markdownlint-cli2-junit.xml
+  ###
+  # ```{rubric} Build GitHub Pages Site
+  # ```
+  # ---
+  # Build the pages site using Sphinx and upload the resulting artifact.
+  #
+  # ```{literalinclude} /.github/workflows/pages.yml
+  # :language: yaml
+  # :start-at: "  build:\n"
+  # :end-before: "###\n"
+  # ```
+  build:
+    needs: markdownlint
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - run: |
+          curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+          sudo apt-get install apt-transport-https --yes
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+          sudo apt-get update
+          sudo apt-get install -y helm
+      - run: helm plugin install https://github.com/helm-unittest/helm-unittest
+      - uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@main
+        with:
+          python-version: 3.11
+          cache: pipenv
+      - name: Setup pages
+        uses: actions/configure-pages@main
+      - name: Install pipenv
+        run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+      - name: Install Python dependencies
+        run: |
+          pipenv install --dev
+          pipenv install -e .
+      - name: Build the static site
+        run: pipenv run sphinx-build -a -E . deploy
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@main
+        with:
+          path: './deploy'
+  ###
+  # ```{rubric} Deploy the Pages site
+  # ```
+  # ---
+  # Download the artifact and deploy to pages.
+  #
+  # ```{literalinclude} /.github/workflows/pages.yml
+  # :language: yaml
+  # :start-at: "  pages:\n"
+  # ```
+  pages:
+    needs: build
+    runs-on: ubuntu-20.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Download pages artifact
+        id: download
+        uses: actions/download-artifact@main
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
